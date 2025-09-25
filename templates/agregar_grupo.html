@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4>➕ Agregar Nuevo Grupo</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre del Grupo *</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" 
+                               required maxlength="50" placeholder="Ej: 1A, 2B, etc.">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="grado" class="form-label">Grado *</label>
+                        <input type="text" class="form-control" id="grado" name="grado" 
+                               required maxlength="20" placeholder="Ej: Primero, Segundo, etc.">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="turno" class="form-label">Turno *</label>
+                        <select class="form-select" id="turno" name="turno" required>
+                            <option value="">Seleccionar turno</option>
+                            <option value="Matutino">Matutino</option>
+                            <option value="Vespertino">Vespertino</option>
+                            <option value="Nocturno">Nocturno</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="capacidad" class="form-label">Capacidad *</label>
+                        <input type="number" class="form-control" id="capacidad" name="capacidad" 
+                               required min="1" max="50" value="30">
+                        <div class="form-text">Número máximo de alumnos en el grupo</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('grupos') }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Guardar Grupo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

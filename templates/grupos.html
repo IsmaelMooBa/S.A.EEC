@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>👥 Gestión de Grupos</h2>
+    <a href="{{ url_for('agregar_grupo') }}" class="btn btn-success">
+        ➕ Agregar Grupo
+    </a>
+</div>
+
+{% if grupos %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Grado</th>
+                <th>Turno</th>
+                <th>Capacidad</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for grupo in grupos %}
+            <tr>
+                <td>{{ grupo.id }}</td>
+                <td>{{ grupo.nombre }}</td>
+                <td>{{ grupo.grado }}</td>
+                <td>{{ grupo.turno }}</td>
+                <td>{{ grupo.capacidad }} alumnos</td>
+                <td class="table-actions">
+                    <a href="{{ url_for('editar_grupo', id=grupo.id) }}" class="btn btn-sm btn-warning">✏️ Editar</a>
+                    <a href="{{ url_for('grupo_alumnos', id=grupo.id) }}" class="btn btn-sm btn-info">👨‍🎓 Alumnos</a>
+                    <a href="{{ url_for('horarios', grupo_id=grupo.id) }}" class="btn btn-sm btn-primary">🕒 Horarios</a>
+                    <a href="{{ url_for('eliminar_grupo', id=grupo.id) }}" class="btn btn-sm btn-danger" 
+                       onclick="return confirm('¿Estás seguro de eliminar este grupo? Se perderán todos los horarios asociados.')">🗑️ Eliminar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <h4>No hay grupos registrados</h4>
+    <p>Comience agregando el primer grupo al sistema.</p>
+    <a href="{{ url_for('agregar_grupo') }}" class="btn btn-primary">Agregar Primer Grupo</a>
+</div>
+{% endif %}
+{% endblock %}

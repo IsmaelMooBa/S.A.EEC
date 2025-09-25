@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Bienvenido al Sistema de Administración de Alumnos</h1>
+    <p class="lead">Sistema completo para la gestión de alumnos, grupos, horarios y matrículas.</p>
+    <hr class="my-4">
+    
+    <div class="row mt-5">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">👨‍🎓 Alumnos</h5>
+                    <p class="card-text">Gestión completa de información personal de alumnos.</p>
+                    <a href="{{ url_for('alumnos') }}" class="btn btn-light">Gestionar Alumnos</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">👥 Grupos</h5>
+                    <p class="card-text">Creación y administración de grupos escolares.</p>
+                    <a href="{{ url_for('grupos') }}" class="btn btn-light">Gestionar Grupos</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">🕒 Horarios</h5>
+                    <p class="card-text">Configuración de horarios por grupo.</p>
+                    <a href="{{ url_for('grupos') }}" class="btn btn-light">Ver Grupos</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">📋 Matrículas</h5>
+                    <p class="card-text">Sistema de matrículas y asignación a grupos.</p>
+                    <a href="{{ url_for('matriculas') }}" class="btn btn-light">Gestionar Matrículas</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Resumen del Sistema</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Alumnos Registrados
+                            <span class="badge bg-primary rounded-pill">{{ total_alumnos }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Grupos Activos
+                            <span class="badge bg-success rounded-pill">{{ total_grupos }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Matrículas Activas
+                            <span class="badge bg-info rounded-pill">{{ total_matriculas }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">🚀 Acciones Rápidas</h5>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('agregar_alumno') }}" class="btn btn-outline-primary">➕ Agregar Alumno</a>
+                        <a href="{{ url_for('agregar_grupo') }}" class="btn btn-outline-success">👥 Crear Grupo</a>
+                        <a href="{{ url_for('matriculas') }}" class="btn btn-outline-warning">📋 Nueva Matrícula</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

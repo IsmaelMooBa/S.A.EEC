@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4>✏️ Editar Grupo</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre del Grupo *</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" 
+                               value="{{ grupo.nombre }}" required maxlength="50">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="grado" class="form-label">Grado *</label>
+                        <input type="text" class="form-control" id="grado" name="grado" 
+                               value="{{ grupo.grado }}" required maxlength="20">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="turno" class="form-label">Turno *</label>
+                        <select class="form-select" id="turno" name="turno" required>
+                            <option value="Matutino" {% if grupo.turno == 'Matutino' %}selected{% endif %}>Matutino</option>
+                            <option value="Vespertino" {% if grupo.turno == 'Vespertino' %}selected{% endif %}>Vespertino</option>
+                            <option value="Nocturno" {% if grupo.turno == 'Nocturno' %}selected{% endif %}>Nocturno</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="capacidad" class="form-label">Capacidad *</label>
+                        <input type="number" class="form-control" id="capacidad" name="capacidad" 
+                               value="{{ grupo.capacidad }}" required min="1" max="50">
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('grupos') }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Actualizar Grupo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
