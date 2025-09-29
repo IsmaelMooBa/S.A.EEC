@@ -56,7 +56,35 @@ def index():
 @app.route('/alumnos')
 def alumnos():
     try:
+        # Obtener parámetros de búsqueda
+        search = request.args.get('search', '').strip()
+        letra_apellido = request.args.get('letra_apellido', '')
+        orden = request.args.get('orden', 'apellido')
+        
+        # Obtener todos los alumnos
         alumnos = Alumno.obtener_todos() or []
+        
+        # Aplicar filtros
+        if search:
+            alumnos = [a for a in alumnos if 
+                      search.lower() in f"{a['nombre']} {a['apellido']} {a['email']}".lower()]
+        
+        if letra_apellido:
+            alumnos = [a for a in alumnos if 
+                      a['apellido'] and a['apellido'].upper().startswith(letra_apellido.upper())]
+        
+        # Aplicar ordenamiento
+        if orden == 'apellido':
+            alumnos.sort(key=lambda x: (x['apellido'] or '', x['nombre'] or ''))
+        elif orden == 'apellido_desc':
+            alumnos.sort(key=lambda x: (x['apellido'] or '', x['nombre'] or ''), reverse=True)
+        elif orden == 'nombre':
+            alumnos.sort(key=lambda x: (x['nombre'] or '', x['apellido'] or ''))
+        elif orden == 'fecha_nacimiento':
+            alumnos.sort(key=lambda x: x['fecha_nacimiento'] or '')
+        elif orden == 'id':
+            alumnos.sort(key=lambda x: x['id'])
+        
         return render_template('alumnos.html', alumnos=alumnos)
     except Exception as e:
         flash(f'Error cargando alumnos: {e}', 'error')
