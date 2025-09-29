@@ -5,7 +5,7 @@ db = Database()
 
 class Alumno:
     def __init__(self, id=None, nombre=None, apellido=None, fecha_nacimiento=None, 
-                 email=None, telefono=None, direccion=None):
+                 email=None, telefono=None, direccion=None, **kwargs):
         self.id = id
         self.nombre = nombre
         self.apellido = apellido
@@ -35,15 +35,27 @@ class Alumno:
         return result[0] if result else None
     
     def actualizar(self):
-        query = """
-        UPDATE alumnos 
-        SET nombre = %s, apellido = %s, fecha_nacimiento = %s, 
-            email = %s, telefono = %s, direccion = %s 
-        WHERE id = %s
-        """
-        params = (self.nombre, self.apellido, self.fecha_nacimiento,
-                 self.email, self.telefono, self.direccion, self.id)
-        return db.execute_query(query, params)
+        """Actualizar alumno en la base de datos"""
+        try:
+            query = """
+            UPDATE alumnos 
+            SET nombre = %s, apellido = %s, fecha_nacimiento = %s, 
+                email = %s, telefono = %s, direccion = %s 
+            WHERE id = %s
+            """
+            params = (self.nombre, self.apellido, self.fecha_nacimiento,
+                     self.email, self.telefono, self.direccion, self.id)
+            
+            # Ejecutar la consulta
+            result = db.execute_query(query, params)
+            
+            # Si execute_query devuelve True o el número de filas afectadas
+            # Considerar éxito si no hubo excepción
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error en actualizar(): {e}")
+            return False
     
     @staticmethod
     def eliminar(alumno_id):
