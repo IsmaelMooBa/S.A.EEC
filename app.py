@@ -246,15 +246,120 @@ def eliminar_grupo(id):
     
     return redirect(url_for('grupos'))
 
+# ===== RUTAS PARA GESTIÓN DE ALUMNOS EN GRUPOS =====
+
 @app.route('/grupo/<int:id>/alumnos')
 def grupo_alumnos(id):
     try:
         grupo = Grupo.obtener_por_id(id)
+        if not grupo:
+            flash('Grupo no encontrado', 'error')
+            return redirect(url_for('grupos'))
+        
         alumnos = Grupo.obtener_alumnos_por_grupo(id) or []
-        return render_template('grupo_alumnos.html', grupo=grupo, alumnos=alumnos)
+        
+        # Obtener alumnos disponibles (no en este grupo)
+        db = Database()
+        query = """
+            SELECT a.* FROM alumnos a
+            WHERE a.id NOT IN (
+                SELECT m.alumno_id FROM matriculas m 
+                WHERE m.grupo_id = %s AND m.estado = 'Activa'
+            )
+            ORDER BY a.apellido, a.nombre
+        """
+        alumnos_disponibles = db.execute_query(query, (id,)) or []
+        
+        return render_template('grupo_alumnos.html', 
+                             grupo=grupo, 
+                             alumnos=alumnos,
+                             alumnos_disponibles=alumnos_disponibles,
+                             now=datetime.now())
     except Exception as e:
         flash(f'Error: {e}', 'error')
         return redirect(url_for('grupos'))
+
+@app.route('/grupo/<int:grupo_id>/agregar_alumno', methods=['POST'])
+def agregar_alumno_grupo(grupo_id):
+    try:
+        alumno_id = request.form['alumno_id']
+        año_escolar = request.form['año_escolar']
+        
+        # Verificar que el grupo existe
+        grupo = Grupo.obtener_por_id(grupo_id)
+        if not grupo:
+            flash('Grupo no encontrado', 'error')
+            return redirect(url_for('grupos'))
+        
+        # Verificar que el alumno existe
+        alumno = Alumno.obtener_por_id(alumno_id)
+        if not alumno:
+            flash('Alumno no encontrado', 'error')
+            return redirect(url_for('grupo_alumnos', id=grupo_id))
+        
+        # Verificar que el alumno no está ya en el grupo
+        alumnos_grupo = Grupo.obtener_alumnos_por_grupo(grupo_id) or []
+        alumno_ids = [a['id'] for a in alumnos_grupo]
+        if int(alumno_id) in alumno_ids:
+            flash('El alumno ya está en este grupo', 'error')
+            return redirect(url_for('grupo_alumnos', id=grupo_id))
+        
+        # Verificar capacidad del grupo
+        if len(alumnos_grupo) >= grupo['capacidad']:
+            flash('El grupo ha alcanzado su capacidad máxima', 'error')
+            return redirect(url_for('grupo_alumnos', id=grupo_id))
+        
+        # Crear matrícula
+        matricula = Matricula(
+            alumno_id=alumno_id,
+            grupo_id=grupo_id,
+            fecha_matricula=datetime.now().date(),
+            año_escolar=año_escolar,
+            estado='Activa'
+        )
+        
+        resultado = matricula.guardar()
+        if resultado:
+            flash(f'Alumno {alumno["nombre"]} {alumno["apellido"]} agregado al grupo correctamente', 'success')
+        else:
+            flash('Error al agregar alumno al grupo', 'error')
+            
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'error')
+    
+    return redirect(url_for('grupo_alumnos', id=grupo_id))
+
+@app.route('/grupo/<int:grupo_id>/remover_alumno', methods=['POST'])
+def remover_alumno_grupo(grupo_id):
+    try:
+        alumno_id = request.form['alumno_id']
+        
+        # Buscar la matrícula activa del alumno en este grupo
+        db = Database()
+        query = """
+            SELECT id FROM matriculas 
+            WHERE alumno_id = %s AND grupo_id = %s AND estado = 'Activa'
+        """
+        result = db.fetch_one(query, (alumno_id, grupo_id))
+        
+        if result:
+            # Cambiar estado de la matrícula a "Inactiva"
+            update_query = "UPDATE matriculas SET estado = 'Inactiva' WHERE id = %s"
+            db.execute_query(update_query, (result['id'],))
+            
+            # Obtener información del alumno para el mensaje
+            alumno = Alumno.obtener_por_id(alumno_id)
+            if alumno:
+                flash(f'Alumno {alumno["nombre"]} {alumno["apellido"]} removido del grupo', 'success')
+            else:
+                flash('Alumno removido del grupo', 'success')
+        else:
+            flash('No se encontró la matrícula del alumno en este grupo', 'error')
+            
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'error')
+    
+    return redirect(url_for('grupo_alumnos', id=grupo_id))
 
 # ===== RUTAS PARA HORARIOS =====
 @app.route('/grupo/<int:grupo_id>/horarios')
@@ -309,7 +414,6 @@ def eliminar_horario(horario_id, grupo_id):
     return redirect(url_for('horarios', grupo_id=grupo_id))
 
 # ===== RUTAS PARA MATRÍCULAS =====
-# Y actualizar la ruta de matrículas para pasar el año actual
 @app.route('/matriculas')
 def matriculas():
     try:
@@ -351,11 +455,6 @@ def agregar_matricula():
     
     return redirect(url_for('matriculas'))
 
-if __name__ == '__main__':
-    print("🚀 Iniciando servidor Flask...")
-    app.run(debug=True, port=5000)
-    
-# Agregar esta ruta después de las rutas existentes
 @app.route('/cambiar_estado_matricula', methods=['POST'])
 def cambiar_estado_matricula():
     try:
@@ -370,3 +469,7 @@ def cambiar_estado_matricula():
             return jsonify({'success': False})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+if __name__ == '__main__':
+    print("🚀 Iniciando servidor Flask...")
+    app.run(debug=True, port=5000)

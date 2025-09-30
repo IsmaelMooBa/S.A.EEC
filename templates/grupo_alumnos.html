@@ -6,45 +6,215 @@
     <a href="{{ url_for('grupos') }}" class="btn btn-secondary">← Volver a Grupos</a>
 </div>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Información del Grupo</h5>
-        <p><strong>Turno:</strong> {{ grupo.turno }}</p>
-        <p><strong>Capacidad:</strong> {{ grupo.capacidad }} alumnos</p>
-        <p><strong>Alumnos inscritos:</strong> {{ alumnos|length }}</p>
+<div class="row">
+    <!-- Información del Grupo -->
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">📊 Información del Grupo</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <p><strong>Turno:</strong><br>{{ grupo.turno }}</p>
+                        <p><strong>Capacidad:</strong><br>{{ grupo.capacidad }} alumnos</p>
+                    </div>
+                    <div class="col-6">
+                        <p><strong>Alumnos inscritos:</strong><br>
+                           <span class="badge bg-primary">{{ alumnos|length }}</span>
+                        </p>
+                        <p><strong>Disponibilidad:</strong><br>
+                           {% set disponibles = grupo.capacidad - alumnos|length %}
+                           <span class="badge {% if disponibles > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                               {{ disponibles }} cupos
+                           </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agregar Alumno al Grupo -->
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">➕ Agregar Alumno al Grupo</h5>
+            </div>
+            <div class="card-body">
+                {% if grupo.capacidad - alumnos|length > 0 %}
+                <!-- <form method="POST" action="{{ url_for('agregar_alumno_grupo', grupo_id=grupo.id) }}">-->
+                <form method="POST" action="{{ url_for('remover_alumno_grupo', grupo_id=grupo.id) }}">
+                    <div class="mb-3">
+                        <label for="alumno_id" class="form-label">Seleccionar Alumno</label>
+                        <select class="form-select" id="alumno_id" name="alumno_id" required>
+                            <option value="">-- Seleccione un alumno --</option>
+                            {% for alumno in alumnos_disponibles %}
+                            <option value="{{ alumno.id }}">
+                                {{ alumno.nombre }} {{ alumno.apellido }} - {{ alumno.email }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">
+                            Solo se muestran alumnos que no están asignados a este grupo
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="año_escolar" class="form-label">Año Escolar</label>
+                        <input type="text" class="form-control" id="año_escolar" name="año_escolar" 
+                               value="{{ now.year }}-{{ now.year + 1 }}" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-person-plus"></i> Agregar al Grupo
+                    </button>
+                </form>
+                {% else %}
+                <div class="alert alert-warning text-center">
+                    <i class="bi bi-exclamation-triangle"></i><br>
+                    <strong>Grupo Completo</strong><br>
+                    No hay cupos disponibles en este grupo
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
-{% if alumnos %}
-<div class="table-responsive">
-    <table class="table table-striped table-hover">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Nombre Completo</th>
-                <th>Email</th>
-                <th>Teléfono</th>
-                <th>Fecha Nacimiento</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for alumno in alumnos %}
-            <tr>
-                <td>{{ alumno.id }}</td>
-                <td>{{ alumno.nombre }} {{ alumno.apellido }}</td>
-                <td>{{ alumno.email }}</td>
-                <td>{{ alumno.telefono or 'N/A' }}</td>
-                <td>{{ alumno.fecha_nacimiento }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Lista de Alumnos del Grupo -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">📋 Lista de Alumnos ({{ alumnos|length }})</h5>
+        {% if alumnos %}
+        <span class="badge bg-primary">{{ alumnos|length }}/{{ grupo.capacidad }}</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if alumnos %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre Completo</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
+                        <th>Fecha Nacimiento</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alumno in alumnos %}
+                    <tr>
+                        <td>{{ alumno.id }}</td>
+                        <td>
+                            <strong>{{ alumno.nombre }} {{ alumno.apellido }}</strong>
+                        </td>
+                        <td>{{ alumno.email }}</td>
+                        <td>{{ alumno.telefono or 'N/A' }}</td>
+                        <td>{{ alumno.fecha_nacimiento }}</td>
+                        <td class="table-actions">
+                            <form method="POST" action="{{ url_for('remover_alumno_grupo', grupo_id=grupo.id) }}" 
+                                  style="display: inline;" 
+                                  onsubmit="return confirm('¿Está seguro de remover a {{ alumno.nombre }} {{ alumno.apellido }} del grupo?')">
+                                <input type="hidden" name="alumno_id" value="{{ alumno.id }}">
+                                <button type="submit" class="btn btn-sm btn-danger" title="Remover del grupo">
+                                    <i class="bi bi-person-dash"></i> Remover
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle"></i>
+            <h4>No hay alumnos inscritos en este grupo</h4>
+            <p class="mb-3">Puede agregar alumnos usando el formulario de arriba.</p>
+            <div class="d-flex gap-2 justify-content-center">
+                <a href="{{ url_for('matriculas') }}" class="btn btn-primary">
+                    <i class="bi bi-clipboard-check"></i> Ir a Matrículas
+                </a>
+                <a href="{{ url_for('agregar_alumno') }}" class="btn btn-success">
+                    <i class="bi bi-person-plus"></i> Agregar Nuevo Alumno
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
 </div>
-{% else %}
-<div class="alert alert-warning">
-    <h4>No hay alumnos inscritos en este grupo</h4>
-    <p>Puede asignar alumnos a este grupo desde la sección de matrículas.</p>
-    <a href="{{ url_for('matriculas') }}" class="btn btn-primary">Ir a Matrículas</a>
+
+<!-- Modal para confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Acción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">¿Está seguro de realizar esta acción?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmButton">Confirmar</button>
+            </div>
+        </div>
+    </div>
 </div>
-{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Función para confirmar eliminación con modal
+function confirmRemove(alumnoNombre, alumnoId) {
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    const message = document.getElementById('confirmMessage');
+    const confirmBtn = document.getElementById('confirmButton');
+    
+    message.textContent = `¿Está seguro de remover a ${alumnoNombre} del grupo?`;
+    
+    confirmBtn.onclick = function() {
+        // Enviar formulario de eliminación
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ url_for('remover_alumno_grupo', grupo_id=grupo.id) }}";
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'alumno_id';
+        input.value = alumnoId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    };
+    
+    modal.show();
+}
+
+// Búsqueda en tiempo real en la tabla
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-control mb-3';
+    searchInput.placeholder = 'Buscar alumno...';
+    
+    const cardHeader = document.querySelector('.card-header');
+    cardHeader.appendChild(searchInput);
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+});
+</script>
 {% endblock %}
