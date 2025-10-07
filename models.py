@@ -75,9 +75,6 @@ class Alumno:
             return False
 
 
-# --------------------------------------------------------
-# Clase Grupo
-# --------------------------------------------------------
 class Grupo:
     def __init__(self, id=None, nombre=None, grado=None, turno=None, capacidad=None):
         self.id = id
@@ -152,9 +149,6 @@ class Grupo:
             return []
 
 
-# --------------------------------------------------------
-# Clase Horario
-# --------------------------------------------------------
 class Horario:
     def __init__(self, id=None, grupo_id=None, dia_semana=None, hora_inicio=None,
                  hora_fin=None, materia=None, profesor=None):
@@ -204,9 +198,6 @@ class Horario:
             return False
 
 
-# --------------------------------------------------------
-# Clase Matricula (reparada y completa)
-# --------------------------------------------------------
 class Matricula:
     def __init__(self, id=None, alumno_id=None, grupo_id=None, fecha_matricula=None,
                  anio_escolar=None, estado=None, codigo_matricula=None):
@@ -292,6 +283,7 @@ class Matricula:
 
     @staticmethod
     def obtener_todas():
+        """Obtener todas las matrículas con información de alumnos y grupos"""
         try:
             query = """
             SELECT m.*, a.nombre AS alumno_nombre, a.apellido AS alumno_apellido,
@@ -308,6 +300,7 @@ class Matricula:
 
     @staticmethod
     def obtener_por_alumno(alumno_id):
+        """Obtener matrículas de un alumno específico"""
         try:
             query = """
             SELECT m.*, g.nombre AS grupo_nombre, g.grado
@@ -323,6 +316,7 @@ class Matricula:
 
     @staticmethod
     def obtener_por_grupo(grupo_id):
+        """Obtener matrículas de un grupo específico"""
         try:
             query = """
             SELECT m.*, a.nombre AS alumno_nombre, a.apellido AS alumno_apellido
@@ -336,73 +330,25 @@ class Matricula:
             return []
 
     @staticmethod
-    def actualizar_estado(matricula_id, estado):
-        try:
-            query = "UPDATE matriculas SET estado = %s WHERE id = %s"
-            return db.execute_query(query, (estado, matricula_id))
-        except Exception as e:
-            print(f"❌ Error actualizando estado de matrícula: {e}")
-            return False
-
-    @staticmethod
-    def obtener_matricula_activa(alumno_id, grupo_id):
+    def obtener_por_id(matricula_id):
+        """Obtener matrícula por ID"""
         try:
             query = """
-            SELECT * FROM matriculas 
-            WHERE alumno_id = %s AND grupo_id = %s AND estado = 'Activa'
+            SELECT m.*, a.nombre as alumno_nombre, a.apellido as alumno_apellido,
+                   g.nombre as grupo_nombre, g.grado as grupo_grado
+            FROM matriculas m
+            JOIN alumnos a ON m.alumno_id = a.id
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            WHERE m.id = %s
             """
-            return db.fetch_one(query, (alumno_id, grupo_id))
+            return db.fetch_one(query, (matricula_id,))
         except Exception as e:
-            print(f"❌ Error obteniendo matrícula activa: {e}")
+            print(f"❌ Error obteniendo matrícula por ID: {e}")
             return None
 
     @staticmethod
-    def obtener_todas():
-        try:
-            query = """
-            SELECT m.*, a.nombre AS alumno_nombre, a.apellido AS alumno_apellido,
-                   g.nombre AS grupo_nombre, g.grado AS grupo_grado
-            FROM matriculas m
-            JOIN alumnos a ON m.alumno_id = a.id
-            LEFT JOIN grupos g ON m.grupo_id = g.id
-            ORDER BY m.fecha_matricula DESC
-            """
-            return db.fetch_all(query)
-        except Exception as e:
-            print(f"❌ Error obteniendo matrículas: {e}")
-            return []
-
-    @staticmethod
-    def obtener_por_alumno(alumno_id):
-        try:
-            query = """
-            SELECT m.*, g.nombre AS grupo_nombre, g.grado
-            FROM matriculas m
-            LEFT JOIN grupos g ON m.grupo_id = g.id
-            WHERE m.alumno_id = %s
-            ORDER BY m.anio_escolar DESC
-            """
-            return db.fetch_all(query, (alumno_id,))
-        except Exception as e:
-            print(f"❌ Error obteniendo matrículas del alumno: {e}")
-            return []
-
-    @staticmethod
-    def obtener_por_grupo(grupo_id):
-        try:
-            query = """
-            SELECT m.*, a.nombre AS alumno_nombre, a.apellido AS alumno_apellido
-            FROM matriculas m
-            JOIN alumnos a ON m.alumno_id = a.id
-            WHERE m.grupo_id = %s AND m.estado = 'Activa'
-            """
-            return db.fetch_all(query, (grupo_id,))
-        except Exception as e:
-            print(f"❌ Error obteniendo matrículas del grupo: {e}")
-            return []
-
-    @staticmethod
     def actualizar_estado(matricula_id, estado):
+        """Actualizar estado de una matrícula"""
         try:
             query = "UPDATE matriculas SET estado = %s WHERE id = %s"
             return db.execute_query(query, (estado, matricula_id))
@@ -411,7 +357,33 @@ class Matricula:
             return False
 
     @staticmethod
+    def actualizar(matricula_id, grupo_id, anio_escolar, estado):
+        """Actualizar matrícula existente"""
+        try:
+            query = """
+            UPDATE matriculas 
+            SET grupo_id = %s, anio_escolar = %s, estado = %s 
+            WHERE id = %s
+            """
+            params = (grupo_id, anio_escolar, estado, matricula_id)
+            return db.execute_query(query, params)
+        except Exception as e:
+            print(f"❌ Error actualizando matrícula: {e}")
+            return False
+
+    @staticmethod
+    def eliminar(matricula_id):
+        """Eliminar matrícula"""
+        try:
+            query = "DELETE FROM matriculas WHERE id = %s"
+            return db.execute_query(query, (matricula_id,))
+        except Exception as e:
+            print(f"❌ Error eliminando matrícula: {e}")
+            return False
+
+    @staticmethod
     def obtener_matricula_activa(alumno_id, grupo_id):
+        """Obtener matrícula activa de un alumno en un grupo"""
         try:
             query = """
             SELECT * FROM matriculas 

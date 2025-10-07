@@ -283,7 +283,7 @@ def grupo_alumnos(id):
 def agregar_alumno_grupo(grupo_id):
     try:
         alumno_id = request.form['alumno_id']
-        anio_escolar = request.form['anio_escolar']  # Cambiado de año_escolar a anio_escolar
+        anio_escolar = request.form['anio_escolar']
         
         # Verificar que el grupo existe
         grupo = Grupo.obtener_por_id(grupo_id)
@@ -314,7 +314,7 @@ def agregar_alumno_grupo(grupo_id):
             alumno_id=alumno_id,
             grupo_id=grupo_id,
             fecha_matricula=datetime.now().date(),
-            anio_escolar=anio_escolar,  # Cambiado de año_escolar a anio_escolar
+            anio_escolar=anio_escolar,
             estado='Activa'
         )
         
@@ -516,6 +516,94 @@ def agregar_matricula():
         flash(f'Error al procesar la solicitud: {str(e)}', 'error')
     
     return redirect(url_for('matriculas'))
+
+@app.route('/cambiar_estado_matricula', methods=['POST'])
+def cambiar_estado_matricula():
+    try:
+        data = request.get_json()
+        matricula_id = data['matricula_id']
+        estado = data['estado']
+        
+        resultado = Matricula.actualizar_estado(matricula_id, estado)
+        if resultado:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ===== NUEVAS RUTAS PARA EDITAR Y ELIMINAR MATRÍCULAS =====
+
+@app.route('/editar_matricula', methods=['POST'])
+def editar_matricula():
+    try:
+        print("🎯 INICIANDO EDICIÓN DE MATRÍCULA")
+        
+        matricula_id = request.form.get('matricula_id')
+        grupo_id = request.form.get('grupo_id') or None
+        anio_escolar = request.form.get('anio_escolar')
+        estado = request.form.get('estado')
+        
+        print(f"🎯 Datos edición: matricula_id={matricula_id}, grupo_id={grupo_id}, anio_escolar={anio_escolar}, estado={estado}")
+        
+        # Validar campos
+        if not matricula_id or not anio_escolar or not estado:
+            flash('Faltan campos requeridos', 'error')
+            return redirect(url_for('matriculas'))
+        
+        # Convertir a enteros
+        try:
+            matricula_id = int(matricula_id)
+            if grupo_id:
+                grupo_id = int(grupo_id)
+            anio_escolar = int(anio_escolar)
+        except ValueError as e:
+            flash('Error en el formato de los datos', 'error')
+            return redirect(url_for('matriculas'))
+        
+        # Actualizar la matrícula
+        db = Database()
+        query = """
+            UPDATE matriculas 
+            SET grupo_id = %s, anio_escolar = %s, estado = %s 
+            WHERE id = %s
+        """
+        params = (grupo_id, anio_escolar, estado, matricula_id)
+        
+        resultado = db.execute_query(query, params)
+        
+        if resultado:
+            flash('Matrícula actualizada correctamente', 'success')
+        else:
+            flash('Error al actualizar matrícula', 'error')
+            
+    except Exception as e:
+        print(f"❌ Error editando matrícula: {e}")
+        flash(f'Error al procesar la solicitud: {str(e)}', 'error')
+    
+    return redirect(url_for('matriculas'))
+
+@app.route('/eliminar_matricula', methods=['POST'])
+def eliminar_matricula():
+    try:
+        data = request.get_json()
+        matricula_id = data['matricula_id']
+        
+        print(f"🎯 Eliminando matrícula ID: {matricula_id}")
+        
+        # Eliminar la matrícula
+        db = Database()
+        query = "DELETE FROM matriculas WHERE id = %s"
+        resultado = db.execute_query(query, (matricula_id,))
+        
+        if resultado:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar la matrícula'})
+            
+    except Exception as e:
+        print(f"❌ Error eliminando matrícula: {e}")
+        return jsonify({'success': False, 'error': str(e)})
 
 # Ruta de prueba para debug
 @app.route('/test_matricula', methods=['GET'])
