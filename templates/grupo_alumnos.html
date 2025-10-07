@@ -43,8 +43,8 @@
             </div>
             <div class="card-body">
                 {% if grupo.capacidad - alumnos|length > 0 %}
-                <!-- <form method="POST" action="{{ url_for('agregar_alumno_grupo', grupo_id=grupo.id) }}">-->
-                <form method="POST" action="{{ url_for('remover_alumno_grupo', grupo_id=grupo.id) }}">
+                <form method="POST" action="{{ url_for('agregar_alumno_grupo', grupo_id=grupo.id) }}">
+                <!-- <form method="POST" action="{{ url_for('remover_alumno_grupo', grupo_id=grupo.id) }}">-->
                     <div class="mb-3">
                         <label for="alumno_id" class="form-label">Seleccionar Alumno</label>
                         <select class="form-select" id="alumno_id" name="alumno_id" required>
@@ -61,8 +61,8 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="año_escolar" class="form-label">Año Escolar</label>
-                        <input type="text" class="form-control" id="año_escolar" name="año_escolar" 
+                        <label for="anio_escolar" class="form-label">Año Escolar</label>
+                        <input type="text" class="form-control" id="anio_escolar" name="anio_escolar" 
                                value="{{ now.year }}-{{ now.year + 1 }}" required>
                     </div>
                     

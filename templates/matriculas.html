@@ -39,8 +39,8 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="año_escolar" class="form-label">Año Escolar *</label>
-                        <input type="number" class="form-control" id="año_escolar" name="año_escolar" 
+                        <label for="anio_escolar" class="form-label">Año Escolar *</label>
+                        <input type="number" class="form-control" id="anio_escolar" name="anio_escolar" 
                                value="{{ now.year }}" required min="2000" max="2030">
                     </div>
                     
@@ -67,7 +67,7 @@
     <table class="table table-striped table-hover">
         <thead class="table-dark">
             <tr>
-                <th>ID</th>
+                <th>Código</th>
                 <th>Alumno</th>
                 <th>Grupo</th>
                 <th>Año Escolar</th>
@@ -79,10 +79,12 @@
         <tbody>
             {% for matricula in matriculas %}
             <tr>
-                <td>{{ matricula.id }}</td>
+                <td>
+                    <strong>{{ matricula.codigo_matricula or 'Generando...' }}</strong>
+                </td>
                 <td>{{ matricula.alumno_nombre }} {{ matricula.alumno_apellido }}</td>
                 <td>{{ matricula.grupo_nombre or 'Sin grupo' }}</td>
-                <td>{{ matricula.año_escolar }}</td>
+                <td>{{ matricula.anio_escolar }}</td>
                 <td>{{ matricula.fecha_matricula }}</td>
                 <td>
                     <span class="badge bg-{% if matricula.estado == 'Activa' %}success{% elif matricula.estado == 'Graduado' %}info{% else %}warning{% endif %}">
@@ -141,4 +143,34 @@ function cambiarEstado(matriculaId, estado) {
     }
 }
 </script>
+{% endblock %}  
+
+{% block scripts %} 
+<script>
+function cambiarEstado(matriculaId, estado) {
+    if (confirm('¿Cambiar estado de la matrícula a ' + estado + '?')) {
+        fetch('/cambiar_estado_matricula', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                matricula_id: matriculaId,
+                estado: estado
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error al cambiar estado');
+            }
+        });
+    }
+}
+</script>
 {% endblock %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Matrículas Realizadas
+                            <span class="badge bg-warning rounded-pill">{{ total_matriculas }}</span>

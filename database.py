@@ -78,6 +78,25 @@ class Database:
             print(f"❌ Error en fetch_one: {e}")
             return None
     
+    def insert_and_get_id(self, query, values):
+        """Ejecuta una consulta INSERT y retorna el ID del registro insertado"""
+        try:
+            if not self.connection or not self.connection.is_connected():
+                self.connect()
+                
+            print(f"📝 Ejecutando INSERT: {query}")
+            print(f"📝 Valores: {values}")
+            self.cursor.execute(query, values)
+            self.connection.commit()
+            last_id = self.cursor.lastrowid
+            print(f"📝 ID obtenido: {last_id}")
+            return last_id
+        except Exception as e:
+            print(f"❌ ERROR en insert_and_get_id: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return None
+
     def initialize_database(self):
         """Inicializar la base de datos con las tablas necesarias"""
         try:
@@ -133,14 +152,15 @@ class Database:
                 )
             """)
             
-            # Tabla de Matrículas
+            # Tabla de Matrículas (ACTUALIZADA con codigo_matricula y anio_escolar)
             temp_cursor.execute("""
                 CREATE TABLE IF NOT EXISTS matriculas (
                     id INT PRIMARY KEY AUTO_INCREMENT,
+                    codigo_matricula VARCHAR(50),
                     alumno_id INT,
                     grupo_id INT,
                     fecha_matricula DATE NOT NULL,
-                    año_escolar VARCHAR(9) NOT NULL,
+                    anio_escolar YEAR NOT NULL,
                     estado ENUM('Activa', 'Inactiva', 'Graduado') DEFAULT 'Activa',
                     FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE,
                     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE SET NULL

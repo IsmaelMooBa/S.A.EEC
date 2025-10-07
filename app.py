@@ -283,7 +283,7 @@ def grupo_alumnos(id):
 def agregar_alumno_grupo(grupo_id):
     try:
         alumno_id = request.form['alumno_id']
-        año_escolar = request.form['año_escolar']
+        anio_escolar = request.form['anio_escolar']  # Cambiado de año_escolar a anio_escolar
         
         # Verificar que el grupo existe
         grupo = Grupo.obtener_por_id(grupo_id)
@@ -314,7 +314,7 @@ def agregar_alumno_grupo(grupo_id):
             alumno_id=alumno_id,
             grupo_id=grupo_id,
             fecha_matricula=datetime.now().date(),
-            año_escolar=año_escolar,
+            anio_escolar=anio_escolar,  # Cambiado de año_escolar a anio_escolar
             estado='Activa'
         )
         
@@ -432,43 +432,113 @@ def matriculas():
 @app.route('/agregar_matricula', methods=['POST'])
 def agregar_matricula():
     try:
-        alumno_id = request.form['alumno_id']
-        grupo_id = request.form['grupo_id'] or None
-        año_escolar = request.form['año_escolar']
-        estado = request.form['estado']
+        print("🎯 INICIANDO AGREGAR_MATRICULA - DEBUG DETALLADO")
         
+        # Obtener datos del formulario
+        alumno_id = request.form.get('alumno_id')
+        grupo_id = request.form.get('grupo_id') or None
+        anio_escolar = request.form.get('anio_escolar')
+        estado = request.form.get('estado')
+        
+        print(f"🎯 DATOS DEL FORMULARIO:")
+        print(f"   alumno_id: {alumno_id} (tipo: {type(alumno_id)})")
+        print(f"   grupo_id: {grupo_id} (tipo: {type(grupo_id)})")
+        print(f"   anio_escolar: {anio_escolar} (tipo: {type(anio_escolar)})")
+        print(f"   estado: {estado} (tipo: {type(estado)})")
+        
+        # Validar campos requeridos
+        if not alumno_id:
+            print("❌ ERROR: alumno_id está vacío")
+            flash('Debe seleccionar un alumno', 'error')
+            return redirect(url_for('matriculas'))
+        
+        if not anio_escolar:
+            print("❌ ERROR: anio_escolar está vacío")
+            flash('El año escolar es requerido', 'error')
+            return redirect(url_for('matriculas'))
+            
+        if not estado:
+            print("❌ ERROR: estado está vacío")
+            flash('El estado es requerido', 'error')
+            return redirect(url_for('matriculas'))
+
+        # Convertir a enteros
+        try:
+            alumno_id = int(alumno_id)
+            if grupo_id:
+                grupo_id = int(grupo_id)
+            anio_escolar = int(anio_escolar)
+            print(f"🎯 DATOS CONVERTIDOS:")
+            print(f"   alumno_id: {alumno_id} (tipo: {type(alumno_id)})")
+            print(f"   grupo_id: {grupo_id} (tipo: {type(grupo_id)})")
+            print(f"   anio_escolar: {anio_escolar} (tipo: {type(anio_escolar)})")
+        except ValueError as e:
+            print(f"❌ ERROR en conversión de tipos: {e}")
+            flash('Error en el formato de los datos numéricos', 'error')
+            return redirect(url_for('matriculas'))
+        
+        # Verificar que el alumno existe
+        alumno = Alumno.obtener_por_id(alumno_id)
+        if not alumno:
+            print(f"❌ ERROR: No existe alumno con ID {alumno_id}")
+            flash('El alumno seleccionado no existe', 'error')
+            return redirect(url_for('matriculas'))
+        
+        print(f"🎯 ALUMNO ENCONTRADO: {alumno['nombre']} {alumno['apellido']}")
+
+        # Crear objeto matrícula
         matricula = Matricula(
             alumno_id=alumno_id,
             grupo_id=grupo_id,
             fecha_matricula=datetime.now().date(),
-            año_escolar=año_escolar,
+            anio_escolar=anio_escolar,
             estado=estado
+        )
+        
+        print("🎯 OBJETO MATRICULA CREADO, LLAMANDO A guardar()...")
+        
+        # Guardar matrícula
+        resultado = matricula.guardar()
+        
+        print(f"🎯 RESULTADO DE guardar(): {resultado}")
+        
+        if resultado:
+            print("✅ MATRÍCULA GUARDADA EXITOSAMENTE")
+            flash('Matrícula agregada correctamente', 'success')
+        else:
+            print("❌ matricula.guardar() retornó False")
+            flash('Error al agregar matrícula - no se pudo guardar en la base de datos', 'error')
+            
+    except Exception as e:
+        print(f"❌ ERROR CRÍTICO en agregar_matricula: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Error al procesar la solicitud: {str(e)}', 'error')
+    
+    return redirect(url_for('matriculas'))
+
+# Ruta de prueba para debug
+@app.route('/test_matricula', methods=['GET'])
+def test_matricula():
+    """Ruta de prueba para crear una matrícula"""
+    try:
+        # Crear una matrícula de prueba
+        matricula = Matricula(
+            alumno_id=1,  # Asegúrate que este alumno exista
+            grupo_id=None,
+            fecha_matricula=datetime.now().date(),
+            anio_escolar=2024,
+            estado='Activa'
         )
         
         resultado = matricula.guardar()
         if resultado:
-            flash('Matrícula agregada correctamente', 'success')
+            return "✅ Matrícula de prueba creada correctamente"
         else:
-            flash('Error al agregar matrícula', 'error')
+            return "❌ Error creando matrícula de prueba"
+            
     except Exception as e:
-        flash(f'Error: {e}', 'error')
-    
-    return redirect(url_for('matriculas'))
-
-@app.route('/cambiar_estado_matricula', methods=['POST'])
-def cambiar_estado_matricula():
-    try:
-        data = request.get_json()
-        matricula_id = data['matricula_id']
-        estado = data['estado']
-        
-        resultado = Matricula.actualizar_estado(matricula_id, estado)
-        if resultado:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': False})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return f"❌ Error: {str(e)}"
 
 if __name__ == '__main__':
     print("🚀 Iniciando servidor Flask...")
