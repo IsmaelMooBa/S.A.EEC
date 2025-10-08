@@ -20,7 +20,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="bi bi-mortarboard-fill"></i>
@@ -29,25 +29,72 @@
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav">
-                    <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" 
-                       href="{{ url_for('index') }}">
-                       <i class="bi bi-house-door"></i> Inicio
-                    </a>
-                    <a class="nav-link {{ 'active' if request.endpoint == 'alumnos' }}" 
-                       href="{{ url_for('alumnos') }}">
-                       <i class="bi bi-people"></i> Alumnos
-                    </a>
-                    <a class="nav-link {{ 'active' if request.endpoint == 'grupos' }}" 
-                       href="{{ url_for('grupos') }}">
-                       <i class="bi bi-collection"></i> Grupos
-                    </a>
-                    <a class="nav-link {{ 'active' if request.endpoint == 'matriculas' }}" 
-                       href="{{ url_for('matriculas') }}">
-                       <i class="bi bi-clipboard-check"></i> Matrículas
-                    </a>
-                </div>
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" 
+                           href="{{ url_for('index') }}">
+                           <i class="bi bi-house-door"></i> Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'alumnos' }}" 
+                           href="{{ url_for('alumnos') }}">
+                           <i class="bi bi-people"></i> Alumnos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'grupos' }}" 
+                           href="{{ url_for('grupos') }}">
+                           <i class="bi bi-collection"></i> Grupos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'matriculas' }}" 
+                           href="{{ url_for('matriculas') }}">
+                           <i class="bi bi-clipboard-check"></i> Matrículas
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Menú de usuario - SOLO si está logueado -->
+                {% if session.usuario %}
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> {{ session.usuario.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <span class="dropdown-item-text">
+                                    <small><strong>Rol:</strong> {{ session.usuario.rol }}</small>
+                                </span>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('dashboard') }}">
+                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                {% else %}
+                <!-- Botón de login si NO está logueado -->
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">
+                            <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
             </div>
         </div>
     </nav>

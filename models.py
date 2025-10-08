@@ -1,5 +1,6 @@
 from database import Database
 from datetime import datetime
+import bcrypt
 
 db = Database()
 
@@ -215,24 +216,33 @@ class Matricula:
             print(f"🔍 INICIANDO GUARDADO DE MATRÍCULA")
             print(f"🔍 Datos: alumno_id={self.alumno_id}, grupo_id={self.grupo_id}, anio_escolar={self.anio_escolar}")
             
-            # 1️⃣ Primero insertamos la matrícula básica usando el nuevo método
+            # 1️⃣ Primero insertamos la matrícula básica
             query = """
-            INSERT INTO matriculas (alumno_id, grupo_id, fecha_matricula, anio_escolar, estado)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO matriculas (alumno_id, grupo_id, fecha_matricula, anio_escolar, estado, permite_login)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """
             params = (self.alumno_id, self.grupo_id, self.fecha_matricula, 
-                     self.anio_escolar, self.estado)
+                     self.anio_escolar, self.estado, True)
             
-            print(f"🔍 Llamando a insert_and_get_id...")
-            matricula_id = db.insert_and_get_id(query, params)
+            print(f"🔍 Ejecutando query de inserción...")
+            resultado = db.execute_query(query, params)
             
-            print(f"🔍 ID de matrícula obtenido: {matricula_id}")
+            if not resultado:
+                print("❌ No se pudo insertar la matrícula")
+                return False
+
+            # 2️⃣ Obtener el ID de la matrícula recién insertada
+            get_id_query = "SELECT LAST_INSERT_ID() as id"
+            id_result = db.fetch_one(get_id_query)
             
-            if not matricula_id:
+            if not id_result:
                 print("❌ No se pudo obtener el ID de la matrícula insertada")
                 return False
 
-            # 2️⃣ Buscamos los datos del alumno para generar las iniciales
+            matricula_id = id_result['id']
+            print(f"🔍 ID de matrícula obtenido: {matricula_id}")
+
+            # 3️⃣ Buscar los datos del alumno para generar las iniciales
             alumno_query = "SELECT nombre, apellido FROM alumnos WHERE id = %s"
             alumno_data = db.fetch_one(alumno_query, (self.alumno_id,))
             
@@ -240,7 +250,7 @@ class Matricula:
                 print("❌ No se encontró el alumno con ID:", self.alumno_id)
                 return False
 
-            # 3️⃣ Generar código con iniciales
+            # 4️⃣ Generar código con iniciales
             nombre_completo = alumno_data['nombre'].strip()
             apellido_completo = alumno_data['apellido'].strip()
             
@@ -260,16 +270,23 @@ class Matricula:
             if len(iniciales) < 2:
                 iniciales = "MAT"
 
-            # 4️⃣ Crear código final
+            # 5️⃣ Crear código final
             codigo = f"{iniciales}-{self.anio_escolar}-{self.alumno_id}-{matricula_id}"
             print(f"🔍 Código generado: {codigo}")
 
-            # 5️⃣ Actualizar la matrícula con el código
+            # 6️⃣ Actualizar la matrícula con el código
             update_query = "UPDATE matriculas SET codigo_matricula = %s WHERE id = %s"
             resultado_update = db.execute_query(update_query, (codigo, matricula_id))
             
             if resultado_update:
-                print(f"✅ Matrícula creada exitosamente con código: {codigo}")
+                # 7️⃣ GENERAR USUARIO AUTOMÁTICAMENTE
+                usuario_creado = Usuario.generar_usuario_estudiante(matricula_id, codigo)
+                
+                if usuario_creado:
+                    print(f"✅ Matrícula y usuario creados exitosamente con código: {codigo}")
+                else:
+                    print(f"⚠️ Matrícula creada pero falló la creación de usuario: {codigo}")
+                
                 return True
             else:
                 print("❌ Falló la actualización del código")
@@ -393,3 +410,148 @@ class Matricula:
         except Exception as e:
             print(f"❌ Error obteniendo matrícula activa: {e}")
             return None
+
+
+class Usuario:
+    def __init__(self, id=None, matricula_id=None, username=None, password_hash=None, 
+                 rol=None, fecha_creacion=None, ultimo_login=None, activo=True):
+        self.id = id
+        self.matricula_id = matricula_id
+        self.username = username
+        self.password_hash = password_hash
+        self.rol = rol
+        self.fecha_creacion = fecha_creacion
+        self.ultimo_login = ultimo_login
+        self.activo = activo
+
+    @staticmethod
+    def hash_password(password):
+        """Generar hash de contraseña"""
+        try:
+            return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        except Exception as e:
+            print(f"❌ Error hashing password: {e}")
+            return None
+
+    def verificar_password(self, password):
+        """Verificar contraseña"""
+        try:
+            if not self.password_hash:
+                print("❌ No hay password_hash para verificar")
+                return False
+            
+            # Verificar que el hash parece ser un hash bcrypt válido
+            if not self.password_hash.startswith('$2b$') and not self.password_hash.startswith('$2a$') and not self.password_hash.startswith('$2y$'):
+                print(f"❌ Hash no parece ser bcrypt válido: {self.password_hash[:10]}...")
+                return False
+                
+            return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+        except Exception as e:
+            print(f"❌ Error verificando password: {e}")
+            print(f"🔍 Hash problemático: {self.password_hash}")
+            return False
+
+    @staticmethod
+    def crear_usuario(username, password, rol='estudiante', matricula_id=None):
+        """Crear nuevo usuario"""
+        try:
+            password_hash = Usuario.hash_password(password)
+            if not password_hash:
+                return False
+                
+            query = """
+            INSERT INTO usuarios (username, password_hash, rol, matricula_id)
+            VALUES (%s, %s, %s, %s)
+            """
+            params = (username, password_hash, rol, matricula_id)
+            return db.execute_query(query, params)
+        except Exception as e:
+            print(f"❌ Error creando usuario: {e}")
+            return False
+
+    @staticmethod
+    def obtener_por_username(username):
+        """Obtener usuario por nombre de usuario"""
+        try:
+            query = "SELECT * FROM usuarios WHERE username = %s AND activo = TRUE"
+            result = db.fetch_one(query, (username,))
+            if result:
+                return Usuario(**result)
+            return None
+        except Exception as e:
+            print(f"❌ Error obteniendo usuario: {e}")
+            return None
+
+    @staticmethod
+    def obtener_por_matricula(matricula_id):
+        """Obtener usuario por ID de matrícula"""
+        try:
+            query = "SELECT * FROM usuarios WHERE matricula_id = %s AND activo = TRUE"
+            result = db.fetch_one(query, (matricula_id,))
+            if result:
+                return Usuario(**result)
+            return None
+        except Exception as e:
+            print(f"❌ Error obteniendo usuario por matrícula: {e}")
+            return None
+
+    def actualizar_ultimo_login(self):
+        """Actualizar fecha de último login"""
+        try:
+            query = "UPDATE usuarios SET ultimo_login = %s WHERE id = %s"
+            return db.execute_query(query, (datetime.now(), self.id))
+        except Exception as e:
+            print(f"❌ Error actualizando último login: {e}")
+            return False
+
+    @staticmethod
+    def generar_usuario_estudiante(matricula_id, codigo_matricula):
+        """Generar usuario automáticamente para estudiante"""
+        try:
+            # Verificar si ya existe
+            usuario_existente = Usuario.obtener_por_matricula(matricula_id)
+            if usuario_existente:
+                print(f"✅ Usuario ya existe para matrícula {matricula_id}")
+                return True
+
+            # Crear nuevo usuario
+            resultado = Usuario.crear_usuario(
+                username=codigo_matricula,
+                password=codigo_matricula,  # Mismo código como contraseña
+                rol='estudiante',
+                matricula_id=matricula_id
+            )
+            
+            if resultado:
+                print(f"✅ Usuario estudiante creado: {codigo_matricula}")
+            else:
+                print(f"❌ Error creando usuario estudiante: {codigo_matricula}")
+                
+            return resultado
+            
+        except Exception as e:
+            print(f"❌ Error generando usuario estudiante: {e}")
+            return False
+
+    @staticmethod
+    def crear_usuario_admin():
+        """Crear usuario admin por defecto si no existe"""
+        try:
+            # Verificar si ya existe el usuario admin
+            admin = Usuario.obtener_por_username('admin')
+            if not admin:
+                print("🔧 Creando usuario admin por defecto...")
+                
+                # Crear usuario admin
+                resultado = Usuario.crear_usuario('admin', 'admin123', 'admin')
+                
+                if resultado:
+                    print("✅ Usuario admin creado exitosamente")
+                    print("🔑 Credenciales: usuario: admin, contraseña: admin123")
+                else:
+                    print("❌ Error creando usuario admin")
+            else:
+                print("✅ Usuario admin ya existe")
+                
+        except Exception as e:
+            print(f"❌ Error creando usuario admin: {e}")

@@ -1,28 +1,112 @@
 import os
 import sys
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from datetime import datetime
 
 # Añade el directorio actual al path de Python
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
-app.secret_key = 'tu_clave_secreta_aqui_2024'
+app.secret_key = 'tu_clave_secreta_muy_segura_aqui_2024'
+
+# Configuración de sesión
+app.config['SECRET_KEY'] = 'tu_clave_secreta_muy_segura_aqui_2024'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600000  # 1 hora
 
 # Importación después de configurar el path
 try:
     from database import Database
-    from models import Alumno, Grupo, Horario, Matricula
+    from models import Alumno, Grupo, Horario, Matricula, Usuario
     print("✅ Módulos importados correctamente")
 except ImportError as e:
     print(f"❌ Error importando módulos: {e}")
+    # Crear clases básicas para evitar errores
+    class Alumno:
+        @staticmethod
+        def obtener_todos(): return []
+        @staticmethod
+        def obtener_por_id(id): return None
+        @staticmethod
+        def eliminar(id): return False
+    
+    class Grupo:
+        @staticmethod
+        def obtener_todos(): return []
+        @staticmethod
+        def obtener_por_id(id): return None
+        @staticmethod
+        def eliminar(id): return False
+    
+    class Horario:
+        @staticmethod
+        def obtener_por_grupo(grupo_id): return []
+        @staticmethod
+        def eliminar(horario_id): return False
+    
+    class Matricula:
+        @staticmethod
+        def obtener_todas(): return []
+        @staticmethod
+        def obtener_por_id(id): return None
+        @staticmethod
+        def obtener_por_alumno(alumno_id): return []
+    
+    class Usuario:
+        @staticmethod
+        def obtener_por_username(username): return None
 
 # Variable para controlar la inicialización de la base de datos
 db_initialized = False
 
-@app.before_request
-def initialize_database():
-    """Inicializar base de datos solo una vez al primer request"""
+def crear_usuario_admin():
+    """Crear usuario admin automáticamente con bcrypt correcto"""
+    try:
+        # Verificar si ya existe el usuario admin
+        admin = Usuario.obtener_por_username('admin')
+        
+        if admin:
+            # Verificar si la contraseña es válida
+            try:
+                test_result = admin.verificar_password('admin123')
+                if test_result:
+                    print("✅ Usuario admin ya existe y contraseña es válida")
+                    return
+                else:
+                    print("⚠️ Usuario admin existe pero contraseña no es válida, recreando...")
+                    # Eliminar usuario existente
+                    db = Database()
+                    db.execute_query("DELETE FROM usuarios WHERE username = 'admin'")
+            except Exception as e:
+                print(f"⚠️ Error verificando usuario admin existente: {e}, recreando...")
+                # Eliminar usuario existente
+                db = Database()
+                db.execute_query("DELETE FROM usuarios WHERE username = 'admin'")
+        
+        # Crear nuevo usuario admin
+        print("🔧 Creando usuario admin por defecto...")
+        
+        import bcrypt
+        password = 'admin123'
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        insert_query = """
+        INSERT INTO usuarios (username, password_hash, rol, activo) 
+        VALUES (%s, %s, %s, %s)
+        """
+        db = Database()
+        resultado = db.execute_query(insert_query, ('admin', password_hash, 'admin', True))
+        
+        if resultado:
+            print("✅ Usuario admin creado exitosamente")
+            print("🔑 Credenciales: usuario: admin, contraseña: admin123")
+        else:
+            print("❌ Error creando usuario admin")
+            
+    except Exception as e:
+        print(f"❌ Error creando usuario admin: {e}")
+
+def initialize_database_once():
+    """Inicializar base de datos solo una vez"""
     global db_initialized
     if not db_initialized:
         try:
@@ -30,13 +114,173 @@ def initialize_database():
             db.initialize_database()
             db_initialized = True
             print("✅ Base de datos inicializada correctamente")
+            
+            # Crear usuario admin
+            crear_usuario_admin()
+            
         except Exception as e:
             print(f"❌ Error inicializando BD: {e}")
 
+# ===== RUTAS DE AUTENTICACIÓN =====
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # Si ya está logueado, redirigir al dashboard
+    if 'usuario' in session:
+        return redirect(url_for('dashboard'))
+    
+    # Inicializar BD antes del primer login si es necesario
+    initialize_database_once()
+    
+    if request.method == 'POST':
+        try:
+            username = request.form.get('username')
+            password = request.form.get('password')
+            
+            if not username or not password:
+                flash('Por favor ingrese usuario y contraseña', 'error')
+                return render_template('login.html')
+            
+            # Buscar usuario
+            usuario = Usuario.obtener_por_username(username)
+            
+            if not usuario:
+                flash('Usuario o contraseña incorrectos', 'error')
+                return render_template('login.html')
+            
+            # Verificar contraseña
+            if not usuario.verificar_password(password):
+                flash('Usuario o contraseña incorrectos', 'error')
+                return render_template('login.html')
+            
+            # Actualizar último login
+            usuario.actualizar_ultimo_login()
+            
+            # Guardar en sesión
+            session['usuario'] = {
+                'id': usuario.id,
+                'username': usuario.username,
+                'rol': usuario.rol,
+                'matricula_id': usuario.matricula_id
+            }
+            session.permanent = True
+            
+            flash(f'¡Bienvenido(a), {usuario.username}!', 'success')
+            return redirect(url_for('dashboard'))
+            
+        except Exception as e:
+            print(f"❌ Error en login: {e}")
+            flash('Error en el proceso de login', 'error')
+            return render_template('login.html')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Has cerrado sesión correctamente', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+def dashboard():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    
+    # Asegurar que la BD está inicializada
+    initialize_database_once()
+    
+    usuario = session['usuario']
+    
+    try:
+        # Calcular estadísticas para admin
+        total_alumnos = len(Alumno.obtener_todos() or [])
+        total_grupos = len(Grupo.obtener_todos() or [])
+        total_matriculas = len(Matricula.obtener_todas() or [])
+        
+        # Dashboard diferente según el rol
+        if usuario['rol'] == 'admin':
+            return render_template('dashboard_admin.html', 
+                                 usuario=usuario,
+                                 total_alumnos=total_alumnos,
+                                 total_grupos=total_grupos,
+                                 total_matriculas=total_matriculas)
+        else:
+            # Obtener información completa del estudiante
+            estudiante_info = obtener_info_estudiante(usuario['matricula_id'])
+            return render_template('dashboard_estudiante.html', 
+                                 usuario=usuario,
+                                 estudiante=estudiante_info,
+                                 Matricula=Matricula)
+    except Exception as e:
+        print(f"❌ Error en dashboard: {e}")
+        flash('Error cargando el dashboard', 'error')
+        return render_template('dashboard_admin.html' if usuario['rol'] == 'admin' else 'dashboard_estudiante.html', 
+                             usuario=usuario,
+                             total_alumnos=0,
+                             total_grupos=0,
+                             total_matriculas=0)
+
+def obtener_info_estudiante(matricula_id):
+    """Obtener información completa del estudiante basado en la matrícula"""
+    try:
+        # Obtener datos de la matrícula
+        matricula = Matricula.obtener_por_id(matricula_id)
+        if not matricula:
+            return None
+        
+        # Obtener datos del alumno
+        alumno = Alumno.obtener_por_id(matricula['alumno_id'])
+        if not alumno:
+            return None
+        
+        # Obtener datos del grupo si existe
+        grupo = None
+        if matricula['grupo_id']:
+            grupo = Grupo.obtener_por_id(matricula['grupo_id'])
+        
+        # Obtener horarios del grupo
+        horarios = []
+        if grupo:
+            horarios = Horario.obtener_por_grupo(grupo['id']) or []
+        
+        # Obtener todas las matrículas del alumno
+        matriculas_alumno = Matricula.obtener_por_alumno(alumno['id']) or []
+        
+        return {
+            'alumno': alumno,
+            'matricula_actual': matricula,
+            'grupo': grupo,
+            'horarios': horarios,
+            'historial_matriculas': matriculas_alumno
+        }
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo info estudiante: {e}")
+        return None
+
+# Middleware para verificar autenticación
+@app.before_request
+def require_login():
+    # Inicializar BD en el primer request
+    initialize_database_once()
+    
+    # Rutas que no requieren login
+    public_routes = ['login', 'logout', 'static', 'index']
+    
+    if request.endpoint and request.endpoint not in public_routes:
+        if 'usuario' not in session:
+            return redirect(url_for('login'))
+
+# ===== RUTA INDEX ACTUALIZADA =====
 @app.route('/')
 def index():
+    # Si el usuario está logueado, redirigir al dashboard
+    if 'usuario' in session:
+        return redirect(url_for('dashboard'))
+    
+    # Si no está logueado, mostrar página de inicio pública
     try:
-        # Calcular los datos para el dashboard
+        # Calcular los datos para el dashboard público
         total_alumnos = len(Alumno.obtener_todos() or [])
         total_grupos = len(Grupo.obtener_todos() or [])
         total_matriculas = len(Matricula.obtener_todas() or [])
@@ -325,7 +569,7 @@ def agregar_alumno_grupo(grupo_id):
             flash('Error al agregar alumno al grupo', 'error')
             
     except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
+        flash(f"Error: {str(e)}", 'error')
     
     return redirect(url_for('grupo_alumnos', id=grupo_id))
 
@@ -357,7 +601,7 @@ def remover_alumno_grupo(grupo_id):
             flash('No se encontró la matrícula del alumno en este grupo', 'error')
             
     except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
+        flash(f"Error: {str(e)}", 'error')
     
     return redirect(url_for('grupo_alumnos', id=grupo_id))
 
@@ -605,28 +849,527 @@ def eliminar_matricula():
         print(f"❌ Error eliminando matrícula: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-# Ruta de prueba para debug
-@app.route('/test_matricula', methods=['GET'])
-def test_matricula():
-    """Ruta de prueba para crear una matrícula"""
+# ===== RUTAS PARA CORREGIR USUARIOS =====
+
+@app.route('/reset_admin')
+def reset_admin():
+    """Ruta temporal para recrear el usuario admin correctamente"""
     try:
-        # Crear una matrícula de prueba
-        matricula = Matricula(
-            alumno_id=1,  # Asegúrate que este alumno exista
-            grupo_id=None,
-            fecha_matricula=datetime.now().date(),
-            anio_escolar=2024,
-            estado='Activa'
-        )
+        db = Database()
         
-        resultado = matricula.guardar()
+        # Eliminar usuario admin existente
+        db.execute_query("DELETE FROM usuarios WHERE username = 'admin'")
+        print("✅ Usuario admin eliminado")
+        
+        # Crear nuevo usuario admin con bcrypt correcto
+        import bcrypt
+        password = 'admin123'
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        insert_query = """
+        INSERT INTO usuarios (username, password_hash, rol, activo) 
+        VALUES (%s, %s, %s, %s)
+        """
+        resultado = db.execute_query(insert_query, ('admin', password_hash, 'admin', True))
+        
         if resultado:
-            return "✅ Matrícula de prueba creada correctamente"
+            return """
+            <h1>✅ Usuario admin recreado correctamente</h1>
+            <p><strong>Credenciales:</strong></p>
+            <ul>
+                <li><strong>Usuario:</strong> admin</li>
+                <li><strong>Contraseña:</strong> admin123</li>
+            </ul>
+            <a href='/login'>Ir al login</a>
+            """
         else:
-            return "❌ Error creando matrícula de prueba"
+            return "❌ Error creando usuario admin"
             
     except Exception as e:
         return f"❌ Error: {str(e)}"
+
+@app.route('/generar_usuarios_matriculas')
+def generar_usuarios_matriculas():
+    """Generar usuarios para todas las matrículas existentes que no tengan usuario"""
+    try:
+        from models import Usuario
+        
+        # Obtener todas las matrículas
+        matriculas = Matricula.obtener_todas() or []
+        usuarios_creados = 0
+        errores = 0
+        
+        for matricula in matriculas:
+            try:
+                # Verificar si ya existe usuario para esta matrícula
+                usuario_existente = Usuario.obtener_por_matricula(matricula['id'])
+                
+                if not usuario_existente:
+                    # Generar código de matrícula si no existe
+                    if not matricula['codigo_matricula']:
+                        # Buscar datos del alumno
+                        alumno = Alumno.obtener_por_id(matricula['alumno_id'])
+                        if alumno:
+                            nombre_completo = alumno['nombre'].strip()
+                            apellido_completo = alumno['apellido'].strip()
+                            
+                            partes_nombre = nombre_completo.split()
+                            partes_apellido = apellido_completo.split()
+
+                            iniciales = ""
+                            if len(partes_nombre) > 0:
+                                iniciales += partes_nombre[0][0].upper()
+                            if len(partes_nombre) > 1:
+                                iniciales += partes_nombre[1][0].upper()
+                            if len(partes_apellido) > 0:
+                                iniciales += partes_apellido[0][0].upper()
+                            if len(partes_apellido) > 1:
+                                iniciales += partes_apellido[1][0].upper()
+
+                            if len(iniciales) < 2:
+                                iniciales = "MAT"
+
+                            codigo = f"{iniciales}-{matricula['anio_escolar']}-{matricula['alumno_id']}-{matricula['id']}"
+                            
+                            # Actualizar matrícula con código
+                            db = Database()
+                            db.execute_query(
+                                "UPDATE matriculas SET codigo_matricula = %s WHERE id = %s",
+                                (codigo, matricula['id'])
+                            )
+                            matricula['codigo_matricula'] = codigo
+                    
+                    # Crear usuario
+                    if matricula['codigo_matricula']:
+                        resultado = Usuario.crear_usuario(
+                            username=matricula['codigo_matricula'],
+                            password=matricula['codigo_matricula'],
+                            rol='estudiante',
+                            matricula_id=matricula['id']
+                        )
+                        
+                        if resultado:
+                            usuarios_creados += 1
+                            print(f"✅ Usuario creado para matrícula {matricula['id']}: {matricula['codigo_matricula']}")
+                        else:
+                            errores += 1
+                            print(f"❌ Error creando usuario para matrícula {matricula['id']}")
+                
+            except Exception as e:
+                errores += 1
+                print(f"❌ Error procesando matrícula {matricula['id']}: {e}")
+        
+        return f"""
+        <h1>✅ Generación de usuarios completada</h1>
+        <p><strong>Usuarios creados:</strong> {usuarios_creados}</p>
+        <p><strong>Errores:</strong> {errores}</p>
+        <p><strong>Total matrículas procesadas:</strong> {len(matriculas)}</p>
+        <a href='/login'>Ir al login</a>
+        """
+        
+    except Exception as e:
+        return f"❌ Error general: {str(e)}"
+
+@app.route('/fix_usuario_imb')
+def fix_usuario_imb():
+    """Corregir el usuario IMB-2025-1-36 con hash bcrypt válido"""
+    try:
+        from models import Usuario
+        
+        # Primero eliminar el usuario existente si existe
+        db = Database()
+        db.execute_query("DELETE FROM usuarios WHERE username = 'IMB-2025-1-36'")
+        print("✅ Usuario IMB-2025-1-36 eliminado")
+        
+        # Buscar la matrícula
+        matricula = db.fetch_one(
+            "SELECT * FROM matriculas WHERE codigo_matricula = %s", 
+            ('IMB-2025-1-36',)
+        )
+        
+        if not matricula:
+            return "❌ No se encontró la matrícula IMB-2025-1-36"
+        
+        # Crear usuario con bcrypt real
+        resultado = Usuario.crear_usuario(
+            username='IMB-2025-1-36',
+            password='IMB-2025-1-36',  # Esto generará un hash bcrypt válido
+            rol='estudiante',
+            matricula_id=matricula['id']
+        )
+        
+        if resultado:
+            return f"""
+            <h1>✅ Usuario IMB-2025-1-36 creado correctamente</h1>
+            <p><strong>Usuario:</strong> IMB-2025-1-36</p>
+            <p><strong>Contraseña:</strong> IMB-2025-1-36</p>
+            <p><strong>Matrícula ID:</strong> {matricula['id']}</p>
+            <p><strong>Alumno ID:</strong> {matricula['alumno_id']}</p>
+            <a href='/login'>Ir al login</a>
+            """
+        else:
+            return "❌ Error creando usuario IMB-2025-1-36"
+            
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+@app.route('/fix_usuario/<username>')
+def fix_usuario(username):
+    """Corregir cualquier usuario con hash bcrypt válido"""
+    try:
+        from models import Usuario
+        
+        # Primero eliminar el usuario existente si existe
+        db = Database()
+        db.execute_query("DELETE FROM usuarios WHERE username = %s", (username,))
+        print(f"✅ Usuario {username} eliminado")
+        
+        # Buscar si es una matrícula
+        matricula = db.fetch_one(
+            "SELECT * FROM matriculas WHERE codigo_matricula = %s", 
+            (username,)
+        )
+        
+        if matricula:
+            # Es un estudiante
+            resultado = Usuario.crear_usuario(
+                username=username,
+                password=username,
+                rol='estudiante',
+                matricula_id=matricula['id']
+            )
+        else:
+            # Es otro tipo de usuario
+            resultado = Usuario.crear_usuario(
+                username=username,
+                password=username,
+                rol='estudiante'
+            )
+        
+        if resultado:
+            return f"""
+            <h1>✅ Usuario {username} creado correctamente</h1>
+            <p><strong>Usuario:</strong> {username}</p>
+            <p><strong>Contraseña:</strong> {username}</p>
+            <p><strong>Rol:</strong> estudiante</p>
+            <a href='/login'>Ir al login</a>
+            """
+        else:
+            return f"❌ Error creando usuario {username}"
+            
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+@app.route('/crear_usuario_especifico/<codigo_matricula>')
+def crear_usuario_especifico(codigo_matricula):
+    """Crear usuario para una matrícula específica"""
+    try:
+        from models import Usuario
+        
+        # Buscar la matrícula
+        db = Database()
+        matricula = db.fetch_one(
+            "SELECT * FROM matriculas WHERE codigo_matricula = %s", 
+            (codigo_matricula,)
+        )
+        
+        if not matricula:
+            return f"❌ No se encontró la matrícula con código: {codigo_matricula}"
+        
+        # Verificar si ya existe usuario
+        usuario_existente = Usuario.obtener_por_matricula(matricula['id'])
+        if usuario_existente:
+            return f"✅ Ya existe usuario para esta matrícula: {usuario_existente.username}"
+        
+        # Crear usuario
+        resultado = Usuario.crear_usuario(
+            username=codigo_matricula,
+            password=codigo_matricula,
+            rol='estudiante',
+            matricula_id=matricula['id']
+        )
+        
+        if resultado:
+            return f"""
+            <h1>✅ Usuario creado exitosamente</h1>
+            <p><strong>Matrícula:</strong> {codigo_matricula}</p>
+            <p><strong>Usuario:</strong> {codigo_matricula}</p>
+            <p><strong>Contraseña:</strong> {codigo_matricula}</p>
+            <p><strong>Rol:</strong> estudiante</p>
+            <a href='/login'>Ir al login</a>
+            """
+        else:
+            return f"❌ Error creando usuario para: {codigo_matricula}"
+            
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+@app.route('/verificar_usuarios')
+def verificar_usuarios():
+    """Verificar todos los usuarios y sus hashes"""
+    try:
+        db = Database()
+        usuarios = db.fetch_all("SELECT username, password_hash FROM usuarios")
+        
+        html = """
+        <h1>🔍 Verificación de Usuarios</h1>
+        <table border="1" style="border-collapse: collapse; width: 100%;">
+            <tr style="background-color: #f2f2f2;">
+                <th>Username</th>
+                <th>Hash</th>
+                <th>Estado</th>
+            </tr>
+        """
+        
+        for usuario in usuarios:
+            hash_valido = usuario['password_hash'].startswith(('$2a$', '$2b$', '$2y$'))
+            estado = "✅ Válido" if hash_valido else "❌ Inválido"
+            color = "green" if hash_valido else "red"
+            
+            html += f"""
+            <tr>
+                <td>{usuario['username']}</td>
+                <td>{usuario['password_hash'][:30]}...</td>
+                <td style="color: {color}; font-weight: bold;">{estado}</td>
+            </tr>
+            """
+        
+        html += """
+        </table>
+        <br>
+        <a href='/fix_usuario_imb'>Corregir usuario IMB-2025-1-36</a> | 
+        <a href='/generar_usuarios_matriculas'>Generar usuarios para todas las matrículas</a> | 
+        <a href='/login'>Ir al login</a>
+        """
+        
+        return html
+        
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+# ===== PANEL DE ADMINISTRACIÓN DE USUARIOS =====
+
+@app.route('/admin/usuarios')
+def admin_usuarios():
+    """Panel de administración de usuarios"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        flash('Acceso denegado', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        # Obtener todas las matrículas
+        matriculas = Matricula.obtener_todas() or []
+        
+        # Obtener todos los usuarios
+        db = Database()
+        usuarios = db.fetch_all("""
+            SELECT u.*, m.codigo_matricula, a.nombre, a.apellido 
+            FROM usuarios u 
+            LEFT JOIN matriculas m ON u.matricula_id = m.id 
+            LEFT JOIN alumnos a ON m.alumno_id = a.id
+            ORDER BY u.username
+        """) or []
+        
+        # Separar matrículas con y sin usuario
+        matriculas_con_usuario = []
+        matriculas_sin_usuario = []
+        
+        for matricula in matriculas:
+            tiene_usuario = any(usuario.get('matricula_id') == matricula['id'] for usuario in usuarios)
+            if tiene_usuario:
+                matriculas_con_usuario.append(matricula)
+            else:
+                matriculas_sin_usuario.append(matricula)
+        
+        return render_template('admin_usuarios.html',
+                             matriculas_con_usuario=matriculas_con_usuario,
+                             matriculas_sin_usuario=matriculas_sin_usuario,
+                             usuarios=usuarios)
+        
+    except Exception as e:
+        flash(f'Error cargando panel de usuarios: {e}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/admin/crear_usuario/<int:matricula_id>')
+def admin_crear_usuario(matricula_id):
+    """Crear usuario para una matrícula específica desde el panel admin"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        return jsonify({'success': False, 'error': 'Acceso denegado'})
+    
+    try:
+        # Obtener la matrícula
+        matricula = Matricula.obtener_por_id(matricula_id)
+        if not matricula:
+            return jsonify({'success': False, 'error': 'Matrícula no encontrada'})
+        
+        # Generar código si no existe
+        if not matricula['codigo_matricula']:
+            alumno = Alumno.obtener_por_id(matricula['alumno_id'])
+            if alumno:
+                nombre_completo = alumno['nombre'].strip()
+                apellido_completo = alumno['apellido'].strip()
+                
+                partes_nombre = nombre_completo.split()
+                partes_apellido = apellido_completo.split()
+
+                iniciales = ""
+                if len(partes_nombre) > 0:
+                    iniciales += partes_nombre[0][0].upper()
+                if len(partes_nombre) > 1:
+                    iniciales += partes_nombre[1][0].upper()
+                if len(partes_apellido) > 0:
+                    iniciales += partes_apellido[0][0].upper()
+                if len(partes_apellido) > 1:
+                    iniciales += partes_apellido[1][0].upper()
+
+                if len(iniciales) < 2:
+                    iniciales = "MAT"
+
+                codigo = f"{iniciales}-{matricula['anio_escolar']}-{matricula['alumno_id']}-{matricula['id']}"
+                
+                # Actualizar matrícula con código
+                db = Database()
+                db.execute_query(
+                    "UPDATE matriculas SET codigo_matricula = %s WHERE id = %s",
+                    (codigo, matricula['id'])
+                )
+                matricula['codigo_matricula'] = codigo
+        
+        # Verificar si ya existe usuario
+        usuario_existente = Usuario.obtener_por_matricula(matricula_id)
+        if usuario_existente:
+            return jsonify({
+                'success': False, 
+                'error': f'Ya existe usuario: {usuario_existente.username}'
+            })
+        
+        # Crear usuario
+        resultado = Usuario.crear_usuario(
+            username=matricula['codigo_matricula'],
+            password=matricula['codigo_matricula'],
+            rol='estudiante',
+            matricula_id=matricula_id
+        )
+        
+        if resultado:
+            return jsonify({
+                'success': True,
+                'message': f'Usuario creado: {matricula["codigo_matricula"]}',
+                'username': matricula['codigo_matricula']
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Error creando usuario'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/admin/eliminar_usuario/<int:usuario_id>')
+def admin_eliminar_usuario(usuario_id):
+    """Eliminar usuario desde el panel admin"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        return jsonify({'success': False, 'error': 'Acceso denegado'})
+    
+    try:
+        db = Database()
+        # Obtener info del usuario antes de eliminar
+        usuario_info = db.fetch_one("SELECT username FROM usuarios WHERE id = %s", (usuario_id,))
+        
+        if not usuario_info:
+            return jsonify({'success': False, 'error': 'Usuario no encontrado'})
+        
+        # No permitir eliminar al admin
+        if usuario_info['username'] == 'admin':
+            return jsonify({'success': False, 'error': 'No se puede eliminar el usuario admin'})
+        
+        # Eliminar usuario
+        resultado = db.execute_query("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
+        
+        if resultado:
+            return jsonify({
+                'success': True,
+                'message': f'Usuario {usuario_info["username"]} eliminado'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Error eliminando usuario'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/admin/generar_todos_usuarios')
+def admin_generar_todos_usuarios():
+    """Generar usuarios para todas las matrículas sin usuario"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        return jsonify({'success': False, 'error': 'Acceso denegado'})
+    
+    try:
+        matriculas = Matricula.obtener_todas() or []
+        usuarios_creados = 0
+        errores = 0
+        
+        for matricula in matriculas:
+            try:
+                # Verificar si ya existe usuario
+                usuario_existente = Usuario.obtener_por_matricula(matricula['id'])
+                if not usuario_existente:
+                    # Generar código si no existe
+                    if not matricula['codigo_matricula']:
+                        alumno = Alumno.obtener_por_id(matricula['alumno_id'])
+                        if alumno:
+                            nombre_completo = alumno['nombre'].strip()
+                            apellido_completo = alumno['apellido'].strip()
+                            
+                            partes_nombre = nombre_completo.split()
+                            partes_apellido = apellido_completo.split()
+
+                            iniciales = ""
+                            if len(partes_nombre) > 0:
+                                iniciales += partes_nombre[0][0].upper()
+                            if len(partes_nombre) > 1:
+                                iniciales += partes_nombre[1][0].upper()
+                            if len(partes_apellido) > 0:
+                                iniciales += partes_apellido[0][0].upper()
+                            if len(partes_apellido) > 1:
+                                iniciales += partes_apellido[1][0].upper()
+
+                            if len(iniciales) < 2:
+                                iniciales = "MAT"
+
+                            codigo = f"{iniciales}-{matricula['anio_escolar']}-{matricula['alumno_id']}-{matricula['id']}"
+                            
+                            db = Database()
+                            db.execute_query(
+                                "UPDATE matriculas SET codigo_matricula = %s WHERE id = %s",
+                                (codigo, matricula['id'])
+                            )
+                            matricula['codigo_matricula'] = codigo
+                    
+                    # Crear usuario
+                    if matricula['codigo_matricula']:
+                        resultado = Usuario.crear_usuario(
+                            username=matricula['codigo_matricula'],
+                            password=matricula['codigo_matricula'],
+                            rol='estudiante',
+                            matricula_id=matricula['id']
+                        )
+                        
+                        if resultado:
+                            usuarios_creados += 1
+                        else:
+                            errores += 1
+                            
+            except Exception as e:
+                errores += 1
+                print(f"❌ Error procesando matrícula {matricula['id']}: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Usuarios creados: {usuarios_creados}, Errores: {errores}',
+            'usuarios_creados': usuarios_creados,
+            'errores': errores
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     print("🚀 Iniciando servidor Flask...")
