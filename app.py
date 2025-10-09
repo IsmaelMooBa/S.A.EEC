@@ -274,9 +274,8 @@ def require_login():
 # ===== RUTA INDEX ACTUALIZADA =====
 @app.route('/')
 def index():
-    # Si el usuario está logueado, redirigir al dashboard
-    if 'usuario' in session:
-        return redirect(url_for('dashboard'))
+    # Redirigir directamente al login
+    return redirect(url_for('login'))
     
     # Si no está logueado, mostrar página de inicio pública
     try:
