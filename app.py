@@ -276,24 +276,6 @@ def require_login():
 def index():
     # Redirigir directamente al login
     return redirect(url_for('login'))
-    
-    # Si no está logueado, mostrar página de inicio pública
-    try:
-        # Calcular los datos para el dashboard público
-        total_alumnos = len(Alumno.obtener_todos() or [])
-        total_grupos = len(Grupo.obtener_todos() or [])
-        total_matriculas = len(Matricula.obtener_todas() or [])
-        
-        return render_template('index.html', 
-                             total_alumnos=total_alumnos,
-                             total_grupos=total_grupos,
-                             total_matriculas=total_matriculas)
-    except Exception as e:
-        print(f"Error en index: {e}")
-        return render_template('index.html', 
-                             total_alumnos=0, 
-                             total_grupos=0, 
-                             total_matriculas=0)
 
 # ===== RUTAS PARA ALUMNOS =====
 @app.route('/alumnos')
@@ -656,21 +638,77 @@ def eliminar_horario(horario_id, grupo_id):
     
     return redirect(url_for('horarios', grupo_id=grupo_id))
 
-# ===== RUTAS PARA MATRÍCULAS =====
+# ===== RUTAS PARA MATRÍCULAS CON BÚSQUEDA =====
 @app.route('/matriculas')
 def matriculas():
     try:
-        matriculas = Matricula.obtener_todas() or []
+        # Obtener parámetros de búsqueda
+        search = request.args.get('search', '').strip()
+        estado = request.args.get('estado', '')
+        anio_escolar = request.args.get('anio_escolar', '')
+        grupo_id = request.args.get('grupo_id', '')
+        
+        # Obtener todos los grupos para el dropdown
+        todos_grupos = Grupo.obtener_todos() or []
+        
+        # Obtener todos los alumnos para el modal
         alumnos = Alumno.obtener_todos() or []
-        grupos = Grupo.obtener_todos() or []
+        
+        # Obtener matrículas con filtros
+        db = Database()
+        
+        # Construir consulta base
+        query = """
+            SELECT m.*, 
+                   a.nombre as alumno_nombre, 
+                   a.apellido as alumno_apellido,
+                   g.nombre as grupo_nombre,
+                   g.id as grupo_id
+            FROM matriculas m
+            LEFT JOIN alumnos a ON m.alumno_id = a.id
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            WHERE 1=1
+        """
+        params = []
+        
+        # Aplicar filtros
+        if search:
+            query += " AND (a.nombre LIKE %s OR a.apellido LIKE %s OR m.codigo_matricula LIKE %s OR g.nombre LIKE %s)"
+            search_term = f"%{search}%"
+            params.extend([search_term, search_term, search_term, search_term])
+        
+        if estado:
+            query += " AND m.estado = %s"
+            params.append(estado)
+        
+        if anio_escolar:
+            query += " AND m.anio_escolar = %s"
+            params.append(int(anio_escolar))
+        
+        if grupo_id:
+            query += " AND m.grupo_id = %s"
+            params.append(int(grupo_id))
+        
+        # Ordenar por fecha de matrícula descendente
+        query += " ORDER BY m.fecha_matricula DESC"
+        
+        # Ejecutar consulta
+        matriculas = db.fetch_all(query, params) or []
+        
         return render_template('matriculas.html', 
-                             matriculas=matriculas, 
-                             alumnos=alumnos, 
-                             grupos=grupos,
+                             matriculas=matriculas,
+                             todos_grupos=todos_grupos,
+                             alumnos=alumnos,
                              now=datetime.now())
+        
     except Exception as e:
-        flash(f'Error: {e}', 'error')
-        return render_template('matriculas.html', matriculas=[], alumnos=[], grupos=[], now=datetime.now())
+        flash(f'Error cargando matrículas: {e}', 'error')
+        # En caso de error, devolver datos básicos
+        return render_template('matriculas.html', 
+                             matriculas=[],
+                             todos_grupos=[],
+                             alumnos=[],
+                             now=datetime.now())
 
 @app.route('/agregar_matricula', methods=['POST'])
 def agregar_matricula():
