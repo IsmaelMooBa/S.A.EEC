@@ -1,257 +1,373 @@
 {% extends "base_estudiante.html" %}
 
-{% block title %}Dashboard Estudiante - Sistema EEC{% endblock %}
-
-{% block extra_css %}
-<style>
-    .profile-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem 0;
-        margin: -1rem -1rem 2rem -1rem;
-    }
-    .info-card {
-        border-left: 4px solid #667eea;
-        background: #f8f9fa;
-    }
-    .schedule-table th {
-        background-color: #667eea;
-        color: white;
-    }
-    .welcome-card {
-        border: none;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<!-- Profile Header -->
-<div class="profile-header">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="display-6">
-                    <i class="bi bi-person-circle"></i>
-                    {% if estudiante and estudiante.alumno %}
-                        {{ estudiante.alumno.nombre }} {{ estudiante.alumno.apellido }}
-                    {% else %}
-                        Estudiante
-                    {% endif %}
-                </h1>
-                <p class="lead mb-0">
-                    Código de Matrícula: 
-                    <strong>
-                        {% if estudiante and estudiante.matricula_actual %}
-                            {{ estudiante.matricula_actual.codigo_matricula }}
-                        {% else %}
-                            No disponible
-                        {% endif %}
-                    </strong>
-                </p>
-                {% if estudiante and estudiante.grupo %}
-                <p class="mb-0">
-                    Grupo: <strong>{{ estudiante.grupo.nombre }}</strong> | 
-                    Grado: <strong>{{ estudiante.grupo.grado }}</strong> | 
-                    Turno: <strong>{{ estudiante.grupo.turno }}</strong>
-                </p>
-                {% endif %}
-            </div>
-            <div class="col-md-4 text-end">
-                <div class="badge bg-success fs-6">
-                    Estado: 
+<div class="dashboard-estudiante">
+    <!-- Header Principal -->
+    <div class="dashboard-header text-center mb-4">
+        <h1 class="display-5 fw-bold text-primary mb-2">¡Bienvenido al Sistema EEC!</h1>
+        <p class="lead text-muted">Panel de control estudiantil</p>
+        <div class="header-stats row justify-content-center mt-3">
+            <div class="col-auto">
+                <span class="badge bg-primary fs-6 p-2">
+                    <i class="bi bi-person-badge me-2"></i>
                     {% if estudiante and estudiante.matricula_actual %}
-                        {{ estudiante.matricula_actual.estado }}
+                        {{ estudiante.matricula_actual.codigo_matricula }}
                     {% else %}
-                        No disponible
+                        Sin matrícula
+                    {% endif %}
+                </span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-success fs-6 p-2">
+                    <i class="bi bi-people me-2"></i>
+                    {% if estudiante and estudiante.grupo %}
+                        {{ estudiante.grupo.nombre }}
+                    {% else %}
+                        Sin grupo
+                    {% endif %}
+                </span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-warning fs-6 p-2">
+                    <i class="bi bi-mortarboard me-2"></i>
+                    {% if estudiante and estudiante.grupo %}
+                        {{ estudiante.grupo.grado }}
+                    {% else %}
+                        Sin grado
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información Principal del Estudiante -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-estudiante shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h3 class="card-title text-white mb-2">
+                                <i class="bi bi-person-circle me-2"></i>
+                                {% if estudiante and estudiante.alumno %}
+                                    {{ estudiante.alumno.nombre }} {{ estudiante.alumno.apellido }}
+                                {% else %}
+                                    Estudiante
+                                {% endif %}
+                            </h3>
+                            <p class="card-text text-white-50 mb-0">
+                                {% if estudiante and estudiante.grupo %}
+                                    Grupo {{ estudiante.grupo.nombre }} - {{ estudiante.grupo.grado }} - Turno {{ estudiante.grupo.turno }}
+                                {% else %}
+                                    Información académica no disponible
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="badge bg-light text-dark fs-6 p-2">
+                                <i class="bi bi-check-circle me-2"></i>
+                                {% if estudiante and estudiante.matricula_actual %}
+                                    {{ estudiante.matricula_actual.estado }}
+                                {% else %}
+                                    Sin estado
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas Principales de Información -->
+    <div class="row g-4 mb-4">
+        <!-- Información Personal -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card module-card border-primary h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="module-icon bg-primary rounded-circle mx-auto mb-3">
+                        <i class="bi bi-person-vcard text-white fs-2"></i>
+                    </div>
+                    <h5 class="card-title text-primary mb-2">Información Personal</h5>
+                    <div class="text-start">
+                        {% if estudiante and estudiante.alumno %}
+                            <p class="mb-2"><strong>Email:</strong> {{ estudiante.alumno.email }}</p>
+                            <p class="mb-2"><strong>Teléfono:</strong> {{ estudiante.alumno.telefono or 'No registrado' }}</p>
+                            <p class="mb-0"><strong>Dirección:</strong> {{ estudiante.alumno.direccion or 'No registrada' }}</p>
+                        {% else %}
+                            <p class="text-muted">Información no disponible</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Información del Grupo -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card module-card border-warning h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="module-icon bg-warning rounded-circle mx-auto mb-3">
+                        <i class="bi bi-people text-white fs-2"></i>
+                    </div>
+                    <h5 class="card-title text-warning mb-2">Mi Grupo</h5>
+                    {% if estudiante and estudiante.grupo %}
+                        <p class="mb-2"><strong>Grupo:</strong> {{ estudiante.grupo.nombre }}</p>
+                        <p class="mb-2"><strong>Grado:</strong> {{ estudiante.grupo.grado }}</p>
+                        <p class="mb-0"><strong>Turno:</strong> {{ estudiante.grupo.turno }}</p>
+                    {% else %}
+                        <p class="text-muted">No asignado a grupo</p>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Información Personal -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card info-card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> Información Personal
-                </h5>
+    <!-- Panel de Información Detallada -->
+    <div class="row g-4">
+        <!-- Horario Detallado -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="card-title mb-0 text-primary text-white">
+                        <i class="bi bi-clock-history me-2 text-white"></i>Horario de Clases Semanal
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if estudiante and estudiante.horarios %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Día</th>
+                                    <th>Materia</th>
+                                    <th>Horario</th>
+                                    <th>Profesor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for horario in estudiante.horarios %}
+                                <tr>
+                                    <td><strong>{{ horario.dia_semana }}</strong></td>
+                                    <td>{{ horario.materia }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ horario.hora_inicio }} - {{ horario.hora_fin }}</span>
+                                    </td>
+                                    <td>{{ horario.profesor }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clock text-muted display-4"></i>
+                        <p class="text-muted mt-3">No hay horarios asignados</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="card-body">
-                {% if estudiante and estudiante.alumno %}
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Nombre Completo:</strong> {{ estudiante.alumno.nombre }} {{ estudiante.alumno.apellido }}</p>
-                        <p><strong>Email:</strong> {{ estudiante.alumno.email }}</p>
-                        <p><strong>Teléfono:</strong> {{ estudiante.alumno.telefono or 'No registrado' }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Fecha de Nacimiento:</strong> {{ estudiante.alumno.fecha_nacimiento or 'No registrada' }}</p>
-                        <p><strong>Dirección:</strong> {{ estudiante.alumno.direccion or 'No registrada' }}</p>
-                        <p><strong>Año Escolar:</strong> 
-                            {% if estudiante.matricula_actual %}
-                                {{ estudiante.matricula_actual.anio_escolar }}
-                            {% else %}
-                                No disponible
-                            {% endif %}
-                        </p>
+        </div>
+
+        <!-- Información Académica Rápida -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="card-title mb-0 text-primary text-white">
+                        <i class="bi bi-info-circle me-2"></i>Información Académica
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <!-- Estado de Matrícula -->
+                        <div class="info-item bg-primary bg-opacity-10 p-3 rounded-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-primary mb-1 text-white">Estado de Matrícula</h6>
+                                    <h4 class="text-primary mb-0 text-white">
+                                        {% if estudiante and estudiante.matricula_actual %}
+                                            {{ estudiante.matricula_actual.estado }}
+                                        {% else %}
+                                            Inactiva
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-clipboard-check text-primary fs-4"></i>
+                            </div>
+                        </div>
+
+                        <!-- Año Escolar -->
+                        <div class="info-item bg-success bg-opacity-10 p-3 rounded-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-success mb-1 text-white">Año Escolar</h6>
+                                    <h4 class="text-success mb-0 text-white">
+                                        {% if estudiante and estudiante.matricula_actual %}
+                                            {{ estudiante.matricula_actual.anio_escolar }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-calendar-check text-success fs-4"></i>
+                            </div>
+                        </div>
+
+                        <!-- Total Materias -->
+                        <div class="info-item bg-info bg-opacity-10 p-3 rounded-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-info mb-1">Materias</h6>
+                                    <h4 class="text-info mb-0">
+                                        {% if estudiante and estudiante.horarios %}
+                                            {{ estudiante.horarios|length }}
+                                        {% else %}
+                                            0
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-journal-text text-info fs-4"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                {% else %}
-                <div class="text-center text-muted">
-                    <p>No se pudo cargar la información del estudiante.</p>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
-</div>
 
-<!-- Información Académica -->
-<div class="row">
-    <!-- Horario de Clases -->
-    {% if estudiante and estudiante.horarios %}
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-clock"></i> Horario de Clases
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover schedule-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Día</th>
-                                <th>Materia</th>
-                                <th>Horario</th>
-                                <th>Profesor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for horario in estudiante.horarios %}
-                            <tr>
-                                <td>{{ horario.dia_semana }}</td>
-                                <td>{{ horario.materia }}</td>
-                                <td>{{ horario.hora_inicio }} - {{ horario.hora_fin }}</td>
-                                <td>{{ horario.profesor }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <!-- Historial de Matrículas (si existe) -->
+    {% if estudiante and estudiante.historial_matriculas %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-list-check me-2 text-white"></i>Historial de Matrículas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Año Escolar</th>
+                                    <th>Grupo</th>
+                                    <th>Fecha de Matrícula</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for matricula in estudiante.historial_matriculas %}
+                                <tr>
+                                    <td><strong>{{ matricula.anio_escolar }}</strong></td>
+                                    <td>
+                                        {% if matricula.grupo_nombre %}
+                                            {{ matricula.grupo_nombre }}
+                                        {% else %}
+                                            <span class="text-muted">Sin grupo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ matricula.fecha_matricula }}</td>
+                                    <td>
+                                        <span class="badge {% if matricula.estado == 'Activa' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ matricula.estado }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
-
-    <!-- Información del Grupo -->
-    {% if estudiante and estudiante.grupo %}
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-people"></i> Información del Grupo
-                </h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Nombre del Grupo:</strong> {{ estudiante.grupo.nombre }}</p>
-                <p><strong>Grado:</strong> {{ estudiante.grupo.grado }}</p>
-                <p><strong>Turno:</strong> {{ estudiante.grupo.turno }}</p>
-                <p><strong>Capacidad:</strong> {{ estudiante.grupo.capacidad }} estudiantes</p>
-            </div>
-        </div>
-    </div>
-    {% elif estudiante %}
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-people"></i> Información del Grupo
-                </h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">No estás asignado a ningún grupo actualmente.</p>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 </div>
 
-<!-- Historial de Matrículas -->
-{% if estudiante and estudiante.historial_matriculas %}
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-clock-history"></i> Historial de Matrículas
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Año Escolar</th>
-                                <th>Grupo</th>
-                                <th>Fecha de Matrícula</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for matricula in estudiante.historial_matriculas %}
-                            <tr>
-                                <td>{{ matricula.anio_escolar }}</td>
-                                <td>
-                                    {% if matricula.grupo_nombre %}
-                                        {{ matricula.grupo_nombre }}
-                                    {% else %}
-                                        Sin grupo asignado
-                                    {% endif %}
-                                </td>
-                                <td>{{ matricula.fecha_matricula }}</td>
-                                <td>
-                                    <span class="badge {% if matricula.estado == 'Activa' %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {{ matricula.estado }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
+<style>
+.dashboard-estudiante {
+    padding: 1rem 0;
+}
 
-<!-- Mensaje si no hay datos del estudiante -->
-{% if not estudiante %}
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body text-center">
-                <h5 class="text-muted">No se encontró información del estudiante</h5>
-                <p class="text-muted">Contacta con el administrador del sistema.</p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-{% endblock %}
+.dashboard-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 2rem 1rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
 
-{% block scripts %}
-<script>
-    // Scripts específicos para el dashboard del estudiante
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Dashboard del estudiante cargado correctamente');
-    });
-</script>
+.module-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid;
+}
+
+.module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.module-icon {
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-gradient-estudiante {
+    background: linear-gradient(135deg, #1976d2 0%, #2596be 100%) !important;
+    border: none;
+    border-radius: 15px;
+}
+
+.info-item {
+    transition: transform 0.2s ease;
+}
+
+.info-item:hover {
+    transform: translateY(-2px);
+}
+
+.header-stats .badge {
+    border-radius: 20px;
+    transition: transform 0.2s ease;
+}
+
+.header-stats .badge:hover {
+    transform: scale(1.05);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dashboard-header {
+        padding: 1.5rem 1rem;
+    }
+    
+    .display-5 {
+        font-size: 2rem;
+    }
+    
+    .module-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .module-icon .fs-2 {
+        font-size: 1.5rem !important;
+    }
+}
+</style>
 {% endblock %}

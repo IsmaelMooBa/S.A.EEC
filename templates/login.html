@@ -6,82 +6,420 @@
     <title>Login - Sistema de Matrículas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" rel="stylesheet">
+        <!-- LOGO EN PESTAÑA - YA CONFIGURADO CORRECTAMENTE -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/image-removebg-preview.png') }}">
     <style>
+        :root {
+          --color-primary: #1976d2;
+          --color-secondary: #2596be;
+          --color-accent: #fb8e17;
+          --color-light: #f8fafc;
+          --color-dark: #333;
+          --color-text: #444;
+          --color-white: #fff;
+          --color-success: #28a745;
+          --color-danger: #dc3545;
+          --color-warning: #ffc107;
+          --color-info: #17a2b8;
+          --shadow-light: 0 2px 10px rgba(0, 0, 0, 0.1);
+          --shadow-medium: 0 5px 15px rgba(0, 0, 0, 0.2);
+          --shadow-heavy: 0 8px 25px rgba(0, 0, 0, 0.3);
+          --border-radius: 12px;
+          --transition: all 0.3s ease;
+        }
+
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--color-white);
             height: 100vh;
             display: flex;
             align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--color-text);
+            position: relative;
+            overflow: hidden;
         }
+        
+        /* Fondo con logo - RUTA CORREGIDA */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('static/img/image-removebg-preview.png');
+            background-size: 50%;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.15;
+            z-index: 0;
+        }
+        
+        .login-container {
+            animation: fadeInUp 0.8s ease-out;
+            position: relative;
+            z-index: 1;
+        }
+        
         .login-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: var(--color-white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            overflow: hidden;
+            transition: var(--transition);
+            border: 2px solid var(--color-primary);
+            position: relative;
+            max-width: 420px;
+            margin: 0 auto;
         }
-        .logo {
+        
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-accent), var(--color-secondary));
+            z-index: 2;
+        }
+        
+        .logo-section {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            color: var(--color-white);
+            padding: 1.5rem 2rem;
             text-align: center;
-            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
         }
-        .logo i {
-            font-size: 4rem;
-            color: #667eea;
-            margin-bottom: 1rem;
+        
+        .logo-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 6s infinite ease-in-out;
+        }
+        
+        .logo-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            display: block;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .logo-title {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            font-size: 1.4rem;
+        }
+        
+        .logo-subtitle {
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        
+        .form-section {
+            padding: 2rem;
+        }
+        
+        .input-group-custom {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+        
+        .input-group-custom .form-control {
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            padding: 12px 15px 12px 45px;
+            transition: var(--transition);
+            font-size: 0.95rem;
+            height: 48px;
+        }
+        
+        .input-group-custom .form-control:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--color-primary);
+            font-size: 1.1rem;
+            z-index: 3;
+            transition: var(--transition);
+        }
+        
+        .input-group-custom .form-control:focus + .input-icon {
+            color: var(--color-accent);
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--color-dark);
+            margin-bottom: 6px;
+            display: block;
+            font-size: 0.9rem;
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            padding: 12px 25px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-light);
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+            height: 48px;
+        }
+        
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.7s;
+        }
+        
+        .btn-login:hover::before {
+            left: 100%;
+        }
+        
+        .btn-login:hover {
+            background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-primary) 100%);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .info-section {
+            background: rgba(37, 150, 190, 0.05);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-top: 1.25rem;
+            border-left: 4px solid var(--color-accent);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .info-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--color-primary), var(--color-accent));
+        }
+        
+        .info-title {
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.95rem;
+        }
+        
+        .info-item {
+            margin-bottom: 0.75rem;
+            padding-left: 1rem;
+            position: relative;
+        }
+        
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .info-item::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--color-accent);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: var(--color-dark);
+            display: block;
+            font-size: 0.85rem;
+        }
+        
+        .info-value {
+            color: var(--color-text);
+            font-size: 0.8rem;
+            line-height: 1.3;
+        }
+        
+        .alert {
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 0.75rem 1rem;
+            box-shadow: var(--shadow-light);
+            border-left: 4px solid;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(232, 62, 140, 0.1) 100%);
+            border-left-color: var(--color-danger);
+            color: #721c24;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%);
+            border-left-color: var(--color-success);
+            color: #155724;
+        }
+        
+        .footer-text {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--color-text);
+            font-size: 0.8rem;
+            position: relative;
+            z-index: 1;
+            opacity: 0.7;
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 0.5;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+          }
+        }
+        
+        @media (max-width: 768px) {
+            .login-card {
+                margin: 1rem;
+                max-width: 380px;
+            }
+            
+            body::before {
+                background-size: 70%;
+            }
+            
+            .logo-section {
+                padding: 1.25rem 1.5rem;
+            }
+            
+            .form-section {
+                padding: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .logo-icon {
+                font-size: 2.5rem;
+            }
+            
+            .logo-title {
+                font-size: 1.2rem;
+            }
+            
+            body::before {
+                background-size: 80%;
+            }
+            
+            .login-card {
+                max-width: 340px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container login-container">
         <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="login-card p-4">
-                    <div class="logo">
-                        <i class="bi bi-person-badge"></i>
-                        <h3 class="text-dark">Sistema de Matrículas</h3>
-                        <p class="text-muted">Iniciar Sesión</p>
+            <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-4">
+                <div class="login-card">
+                    <div class="logo-section">
+                        <i class="bi bi-person-badge logo-icon"></i>
+                        <h2 class="logo-title">Sistema de Matrículas</h2>
+                        <p class="logo-subtitle">Ingrese sus credenciales</p>
                     </div>
+                    
+                    <div class="form-section">
+                        <!-- Mensajes Flash -->
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                        <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }} me-2"></i>
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
 
-                    <!-- Mensajes Flash -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                                    {{ message }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                </div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
+                        <form method="POST" action="{{ url_for('login') }}">
+                            <div class="input-group-custom">
+                                <label for="username" class="form-label">Usuario / Matrícula</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       placeholder="Código de matrícula" required autofocus>
+                                <i class="bi bi-person input-icon"></i>
+                            </div>
+                            
+                            <div class="input-group-custom">
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Contraseña" required>
+                                <i class="bi bi-lock input-icon"></i>
+                            </div>
 
-                    <form method="POST" action="{{ url_for('login') }}">
-                        <div class="mb-3">
-                            <label for="username" class="form-label">
-                                <i class="bi bi-person"></i> Usuario / Matrícula
-                            </label>
-                            <input type="text" class="form-control" id="username" name="username" 
-                                   placeholder="Ingrese su código de matrícula" required autofocus>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="password" class="form-label">
-                                <i class="bi bi-lock"></i> Contraseña
-                            </label>
-                            <input type="password" class="form-control" id="password" name="password" 
-                                   placeholder="Ingrese su contraseña" required>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
-                            </button>
-                        </div>
-                    </form>
-
-                    <div class="mt-4 text-center">
-                        <small class="text-muted">
-                            <strong>Estudiantes:</strong> Usa tu código de matrícula como usuario y contraseña<br>
-                            <strong>Admin:</strong> usuario: admin, contraseña: admin123
-                        </small>
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="submit" class="btn btn-login">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i> Iniciar Sesión
+                                </button>
+                            </div>
+                        </form>
                     </div>
+                </div>
+                
+                <div class="footer-text">
+                    &copy; 2023 Sistema de Matrículas - Todos los derechos reservados
                 </div>
             </div>
         </div>
