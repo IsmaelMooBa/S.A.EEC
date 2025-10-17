@@ -1,0 +1,407 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-5 fw-bold text-primary mb-3">
+        <i class="bi bi-clipboard-check me-3"></i>Editar Lista de Asistencia
+    </h1>
+    <a href="{{ url_for('pase_lista') }}" class="btn btn-secondary">← Volver a Listas</a>
+</div>
+
+<!-- Información de la Lista -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">📋 Información de la Lista</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Fecha:</strong> {{ lista.fecha.strftime('%d/%m/%Y') }}
+            </div>
+            <div class="col-md-2">
+                <strong>Mes:</strong> {{ lista.mes }}
+            </div>
+            <div class="col-md-2">
+                <strong>Hora:</strong> {{ lista.hora }}
+            </div>
+            <div class="col-md-3">
+                <strong>Materia:</strong> {{ lista.materia }}
+            </div>
+            <div class="col-md-2">
+                <strong>Profesor:</strong> {{ lista.profesor }}
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <strong>Grupo:</strong> {{ lista.grupo_nombre }} - {{ lista.grado }} ({{ lista.turno }})
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario de Asistencia -->
+<form method="POST" action="{{ url_for('guardar_asistencia') }}">
+    <input type="hidden" name="lista_id" value="{{ lista.id }}">
+    
+    <div class="card">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">🎯 Registro de Asistencia y Calificaciones</h5>
+            <button type="submit" class="btn btn-light btn-sm">
+                💾 Guardar Cambios
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th width="120">Matrícula</th>
+                            <th>Nombre del Alumno</th>
+                            <th width="120">Asistencia</th>
+                            <th width="150">Calificación Examen (%)</th>
+                            <th width="100">Validación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alumno in alumnos %}
+                        <tr>
+                            <td>
+                                <strong>{{ alumno.codigo_matricula or 'Sin matrícula' }}</strong>
+                                {% if not alumno.codigo_matricula %}
+                                <br><small class="text-danger">¡Asignar matrícula!</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ alumno.nombre }} {{ alumno.apellido }}
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input asistencia-checkbox" 
+                                           type="checkbox" 
+                                           name="asistencia_{{ alumno.id }}" 
+                                           id="asistencia_{{ alumno.id }}" 
+                                           value="1"
+                                           {% if alumno.asistio %}checked{% endif %}>
+                                    <label class="form-check-label" for="asistencia_{{ alumno.id }}">
+                                        {% if alumno.asistio %}
+                                            <span class="text-success">✅ Asistió</span>
+                                        {% else %}
+                                            <span class="text-danger">❌ No asistió</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" 
+                                           class="form-control calificacion-input" 
+                                           name="calificacion_{{ alumno.id }}" 
+                                           value="{{ alumno.calificacion if alumno.calificacion is not none else '' }}" 
+                                           min="0" 
+                                           max="100" 
+                                           step="1"
+                                           placeholder="0-100">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                {% if alumno.calificacion %}
+                                <small class="text-muted">Actual: {{ alumno.calificacion }}%</small>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch">
+                                    {% if session.usuario.rol == 'admin' %}
+                                        <!-- Para admin: solo lectura -->
+                                        <input class="form-check-input" 
+                                            type="checkbox" 
+                                            disabled
+                                            {% if alumno.validado %}checked{% endif %}>
+                                        <label class="form-check-label">
+                                            {% if alumno.validado %}
+                                                <span class="text-success">✅ Validado</span>
+                                                <br><small class="text-muted">Por el estudiante</small>
+                                            {% else %}
+                                                <span class="text-warning">⏳ Pendiente</span>
+                                            {% endif %}
+                                        </label>
+                                    {% else %}
+                                        <!-- Para estudiante: editable -->
+                                        <input class="form-check-input validacion-checkbox" 
+                                            type="checkbox" 
+                                            name="validado_{{ alumno.id }}" 
+                                            id="validado_{{ alumno.id }}"
+                                            {% if alumno.validado %}checked{% endif %}
+                                            onchange="actualizarValidacion({{ alumno.id }}, this.checked)">
+                                        <label class="form-check-label" for="validado_{{ alumno.id }}">
+                                            {% if alumno.validado %}
+                                                <span class="text-success">✅ Validado</span>
+                                            {% else %}
+                                                <span class="text-warning">⏳ Validar</span>
+                                            {% endif %}
+                                        </label>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Total Alumnos:</strong> {{ alumnos|length }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Asistencia Registrada:</strong> 
+                    <span id="total-asistencia">{{ total_asistencia }}</span>/{{ alumnos|length }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Porcentaje Asistencia:</strong>
+                    <span id="porcentaje-asistencia">
+                        {% if alumnos|length > 0 %}
+                            {{ ((total_asistencia / alumnos|length) * 100)|round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="col-md-3 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        💾 Guardar Todos los Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Resumen de Validación -->
+<div class="card mt-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">🔍 Resumen de Asistencia</h5>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="border rounded p-3 bg-primary bg-opacity-10">
+                    <h3 class="text-primary">{{ total_alumnos }}</h3>
+                    <small class="text-muted">Total Alumnos</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 bg-success bg-opacity-10">
+                    <h3 class="text-success" id="resumen-asistencia">{{ total_asistencia }}</h3>
+                    <small class="text-muted">Asistieron</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 bg-warning bg-opacity-10">
+                    <h3 class="text-warning" id="resumen-faltas">{{ total_alumnos - total_asistencia }}</h3>
+                    <small class="text-muted">Faltaron</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 bg-info bg-opacity-10">
+                    <h3 class="text-info">{{ total_validados }}</h3>
+                    <small class="text-muted">Validados</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Barra de progreso de asistencia -->
+        <div class="mt-4">
+            <div class="d-flex justify-content-between mb-2">
+                <span>Porcentaje de Asistencia</span>
+                <span id="porcentaje-bar-text">
+                    {% if alumnos|length > 0 %}
+                        {{ ((total_asistencia / alumnos|length) * 100)|round(1) }}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </span>
+            </div>
+            <div class="progress" style="height: 20px;">
+                <div id="porcentaje-bar" 
+                     class="progress-bar {% if (total_asistencia / alumnos|length * 100) >= 80 %}bg-success{% elif (total_asistencia / alumnos|length * 100) >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                     role="progressbar" 
+                     style="width: {% if alumnos|length > 0 %}{{ (total_asistencia / alumnos|length * 100) }}{% else %}0{% endif %}%"
+                     aria-valuenow="{% if alumnos|length > 0 %}{{ (total_asistencia / alumnos|length * 100) }}{% else %}0{% endif %}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Actualizar resumen en tiempo real cuando cambian los checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.asistencia-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            actualizarResumen();
+            actualizarEtiquetaAsistencia(this);
+        });
+        
+        // Inicializar etiquetas
+        actualizarEtiquetaAsistencia(checkbox);
+    });
+    
+    function actualizarEtiquetaAsistencia(checkbox) {
+        const label = checkbox.nextElementSibling;
+        if (checkbox.checked) {
+            label.innerHTML = '<span class="text-success">✅ Asistió</span>';
+        } else {
+            label.innerHTML = '<span class="text-danger">❌ No asistió</span>';
+        }
+    }
+    
+    function actualizarResumen() {
+        let totalAsistencia = 0;
+        const totalAlumnos = {{ alumnos|length }};
+        const checkboxes = document.querySelectorAll('.asistencia-checkbox');
+        
+        // Contar asistencias
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                totalAsistencia++;
+            }
+        });
+        
+        // Calcular porcentaje
+        const porcentaje = totalAlumnos > 0 ? ((totalAsistencia / totalAlumnos) * 100) : 0;
+        
+        // Actualizar displays
+        document.getElementById('total-asistencia').textContent = totalAsistencia;
+        document.getElementById('resumen-asistencia').textContent = totalAsistencia;
+        document.getElementById('resumen-faltas').textContent = totalAlumnos - totalAsistencia;
+        document.getElementById('porcentaje-asistencia').textContent = porcentaje.toFixed(1) + '%';
+        document.getElementById('porcentaje-bar-text').textContent = porcentaje.toFixed(1) + '%';
+        
+        // Actualizar barra de progreso
+        const progressBar = document.getElementById('porcentaje-bar');
+        progressBar.style.width = porcentaje + '%';
+        progressBar.setAttribute('aria-valuenow', porcentaje);
+        
+        // Cambiar color de la barra según el porcentaje
+        if (porcentaje >= 80) {
+            progressBar.className = 'progress-bar bg-success';
+        } else if (porcentaje >= 60) {
+            progressBar.className = 'progress-bar bg-warning';
+        } else {
+            progressBar.className = 'progress-bar bg-danger';
+        }
+    }
+    
+    // Validar calificaciones
+    const calificaciones = document.querySelectorAll('.calificacion-input');
+    calificaciones.forEach(input => {
+        input.addEventListener('change', function() {
+            const valor = parseInt(this.value);
+            if (valor < 0) {
+                this.value = 0;
+            } else if (valor > 100) {
+                this.value = 100;
+            }
+        });
+    });
+    
+    // Inicializar resumen
+    actualizarResumen();
+});
+
+// Función para marcar/desmarcar todos los checkboxes de asistencia
+function toggleAllAsistencias(estado) {
+    const checkboxes = document.querySelectorAll('.asistencia-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = estado;
+        // Disparar evento change para actualizar las etiquetas
+        const event = new Event('change');
+        checkbox.dispatchEvent(event);
+    });
+}
+
+// Función para actualizar validación (solo para estudiantes)
+function actualizarValidacion(alumnoId, validado) {
+    // Esta función solo se ejecuta para estudiantes
+    if ({{ session.usuario.rol != 'admin' | tojson }}) {
+        // Aquí puedes agregar una llamada AJAX si necesitas guardar en tiempo real
+        console.log(`Validación actualizada para alumno ${alumnoId}: ${validado}`);
+    }
+}
+
+// Para admin, mostrar tooltip informativo
+document.addEventListener('DOMContentLoaded', function() {
+    {% if session.usuario.rol == 'admin' %}
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    {% endif %}
+});
+</script>
+
+<!-- Botones rápidos para marcar/desmarcar todos -->
+<div class="card mt-4">
+    <div class="card-header bg-secondary text-white">
+        <h6 class="mb-0">⚡ Acciones Rápidas</h6>
+    </div>
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-success" onclick="toggleAllAsistencias(true)">
+                ✅ Marcar Todos como Asistieron
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="toggleAllAsistencias(false)">
+                ❌ Marcar Todos como No Asistieron
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-check:checked + .btn-outline-success {
+    background-color: #198754;
+    border-color: #198754;
+    color: white;
+}
+
+.btn-check:checked + .btn-outline-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.table th {
+    background-color: #2c3e50;
+    color: white;
+    border-bottom: 2px solid #34495e;
+}
+
+.card-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.progress {
+    border-radius: 10px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.input-group-text {
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+}
+</style>
+{% endblock %}

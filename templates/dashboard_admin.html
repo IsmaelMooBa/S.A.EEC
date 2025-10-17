@@ -103,6 +103,22 @@
         </div>
     </div>
 
+        <!-- Tarjeta para Pase de Lista -->
+    <div class="col-xl-3 col-md-6">
+        <div class="card module-card border-purple h-100 shadow-sm">
+            <div class="card-body text-center p-4">
+                <div class="module-icon bg-purple rounded-circle mx-auto mb-3">
+                    <i class="bi bi-clipboard-check text-white fs-2"></i>
+                </div>
+                <h5 class="card-title text-purple mb-2">Pase de Lista</h5>
+                <p class="card-text text-muted mb-3">Registro de asistencia y calificaciones</p>
+                <a href="{{ url_for('pase_lista') }}" class="btn btn-purple w-100">
+                    <i class="bi bi-clipboard-check me-2"></i>Gestionar Listas
+                </a>
+            </div>
+        </div>
+    </div>
+
     <!-- Gestión de Usuarios - Ahora arriba del resumen -->
     <div class="row g-4 mb-4">
         <div class="col-12">
@@ -355,6 +371,30 @@
 
 .card:hover {
     box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+.bg-purple {
+    background-color: #6f42c1 !important;
+}
+
+.text-purple {
+    color: #6f42c1 !important;
+}
+
+.border-purple {
+    border-color: #6f42c1 !important;
+}
+
+.btn-purple {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+}
+
+.btn-purple:hover {
+    background-color: #5a32a3;
+    border-color: #5a32a3;
+    color: white;
 }
 </style>
 {% endblock %}

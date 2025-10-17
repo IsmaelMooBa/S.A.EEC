@@ -121,6 +121,439 @@ def initialize_database_once():
         except Exception as e:
             print(f"❌ Error inicializando BD: {e}")
 
+# ===== RUTAS PARA PASE DE LISTA =====
+
+@app.route('/pase_lista')
+def pase_lista():
+    try:
+        # Obtener parámetros de filtro
+        grupo_id = request.args.get('grupo_id', type=int)
+        materia = request.args.get('materia', '')
+        dia = request.args.get('dia', '')
+        mes = request.args.get('mes', type=int)
+        
+        # Consulta base usando Database
+        db = Database()
+        
+        # Consulta corregida - más simple y directa
+        query = """
+            SELECT 
+                la.*, 
+                g.nombre as grupo_nombre, 
+                g.grado, 
+                g.turno,
+                (SELECT COUNT(*) FROM asistencias_alumnos aa WHERE aa.lista_id = la.id AND aa.asistio = 1) as total_asistencia,
+                (SELECT COUNT(*) FROM matriculas m WHERE m.grupo_id = g.id AND m.estado = 'Activa') as total_alumnos
+            FROM listas_asistencia la
+            JOIN grupos g ON la.grupo_id = g.id
+            WHERE 1=1
+        """
+        params = []
+        
+        if grupo_id:
+            query += " AND la.grupo_id = %s"
+            params.append(grupo_id)
+        
+        if materia:
+            query += " AND la.materia LIKE %s"
+            params.append(f"%{materia}%")
+        
+        if dia:
+            query += " AND la.fecha = %s"
+            params.append(dia)
+        
+        if mes:
+            query += " AND MONTH(la.fecha) = %s"
+            params.append(mes)
+        
+        query += " ORDER BY la.fecha DESC, la.hora DESC"
+        
+        listas_asistencia = db.fetch_all(query, params) or []
+        
+        # Obtener todos los grupos para el filtro
+        todos_grupos = Grupo.obtener_todos() or []
+        
+        # Pasar la fecha actual al template
+        now = datetime.now()
+        
+        print(f"🔍 Listas encontradas: {len(listas_asistencia)}")  # Debug
+        
+        return render_template('pase_lista.html', 
+                             listas_asistencia=listas_asistencia,
+                             todos_grupos=todos_grupos,
+                             now=now)
+    except Exception as e:
+        flash(f'Error cargando listas de asistencia: {e}', 'error')
+        import traceback
+        traceback.print_exc()  # Para ver el error completo
+        now = datetime.now()
+        return render_template('pase_lista.html', 
+                             listas_asistencia=[],
+                             todos_grupos=[],
+                             now=now)
+
+@app.route('/crear_lista_asistencia', methods=['POST'])
+def crear_lista_asistencia():
+    try:
+        grupo_id = request.form['grupo_id']
+        fecha = request.form['fecha']
+        hora = request.form['hora']
+        materia = request.form['materia']
+        profesor = request.form['profesor']
+        
+        # Obtener el mes automáticamente de la fecha
+        fecha_obj = datetime.strptime(fecha, '%Y-%m-%d')
+        mes = fecha_obj.strftime('%B')  # Nombre completo del mes
+        
+        db = Database()
+        resultado = db.execute_query("""
+            INSERT INTO listas_asistencia (grupo_id, fecha, mes, hora, materia, profesor)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (grupo_id, fecha, mes, hora, materia, profesor))
+        
+        if resultado:
+            flash('Lista de asistencia creada exitosamente', 'success')
+        else:
+            flash('Error al crear lista de asistencia', 'error')
+            
+    except Exception as e:
+        flash(f'Error al crear lista: {str(e)}', 'error')
+    
+    return redirect(url_for('pase_lista'))
+
+@app.route('/editar_lista_asistencia/<int:lista_id>')
+def editar_lista_asistencia(lista_id):
+    try:
+        db = Database()
+        
+        # Obtener información de la lista
+        lista = db.fetch_one("""
+            SELECT la.*, g.nombre as grupo_nombre, g.grado, g.turno
+            FROM listas_asistencia la
+            JOIN grupos g ON la.grupo_id = g.id
+            WHERE la.id = %s
+        """, (lista_id,))
+        
+        if not lista:
+            flash('Lista de asistencia no encontrada', 'error')
+            return redirect(url_for('pase_lista'))
+        
+        print(f"🔍 Lista encontrada: {lista}")  # Debug
+        
+        # Obtener alumnos del grupo con su asistencia y calificaciones - CONSULTA CORREGIDA
+        alumnos = db.fetch_all("""
+            SELECT 
+                a.id, 
+                m.codigo_matricula,  -- CORREGIDO: usar m.codigo_matricula en lugar de a.matricula
+                a.nombre, 
+                a.apellido, 
+                COALESCE(aa.asistio, 0) as asistio,
+                COALESCE(aa.calificacion, 0) as calificacion,
+                COALESCE(aa.validado, 0) as validado
+            FROM alumnos a
+            JOIN matriculas m ON m.alumno_id = a.id AND m.grupo_id = %s AND m.estado = 'Activa'
+            LEFT JOIN asistencias_alumnos aa ON aa.alumno_id = a.id AND aa.lista_id = %s
+            ORDER BY a.nombre, a.apellido
+        """, (lista['grupo_id'], lista_id)) or []
+        
+        print(f"🔍 Alumnos encontrados: {len(alumnos)}")  # Debug
+        
+        # Calcular totales
+        total_asistencia = sum(1 for alumno in alumnos if alumno['asistio'])
+        total_validados = sum(1 for alumno in alumnos if alumno['validado'])
+        
+        return render_template('editar_lista_asistencia.html',
+                             lista=lista,
+                             alumnos=alumnos,
+                             total_alumnos=len(alumnos),
+                             total_asistencia=total_asistencia,
+                             total_validados=total_validados)
+    except Exception as e:
+        flash(f'Error cargando lista de asistencia: {e}', 'error')
+        import traceback
+        traceback.print_exc()  # Para ver el error completo
+        return redirect(url_for('pase_lista'))
+
+@app.route('/ver_lista_asistencia/<int:lista_id>')
+def ver_lista_asistencia(lista_id):
+    """Ver lista de asistencia (solo lectura)"""
+    try:
+        db = Database()
+        
+        # Obtener información de la lista
+        lista = db.fetch_one("""
+            SELECT la.*, g.nombre as grupo_nombre, g.grado, g.turno
+            FROM listas_asistencia la
+            JOIN grupos g ON la.grupo_id = g.id
+            WHERE la.id = %s
+        """, (lista_id,))
+        
+        if not lista:
+            flash('Lista de asistencia no encontrada', 'error')
+            return redirect(url_for('pase_lista'))
+        
+        # Obtener alumnos del grupo con su asistencia y calificaciones
+        alumnos = db.fetch_all("""
+            SELECT 
+                a.id, 
+                m.codigo_matricula,  -- Usar codigo_matricula de la tabla matriculas
+                a.nombre, 
+                a.apellido, 
+                COALESCE(aa.asistio, 0) as asistio,
+                COALESCE(aa.calificacion, 0) as calificacion,
+                COALESCE(aa.validado, 0) as validado
+            FROM alumnos a
+            JOIN matriculas m ON m.alumno_id = a.id AND m.grupo_id = %s AND m.estado = 'Activa'
+            LEFT JOIN asistencias_alumnos aa ON aa.alumno_id = a.id AND aa.lista_id = %s
+            ORDER BY a.nombre, a.apellido
+        """, (lista['grupo_id'], lista_id)) or []
+        
+        # Calcular totales
+        total_alumnos = len(alumnos)
+        total_asistencia = sum(1 for alumno in alumnos if alumno['asistio'])
+        total_validados = sum(1 for alumno in alumnos if alumno['validado'])
+        
+        return render_template('ver_lista_asistencia.html',
+                             lista=lista,
+                             alumnos=alumnos,
+                             total_alumnos=total_alumnos,
+                             total_asistencia=total_asistencia,
+                             total_validados=total_validados)
+    except Exception as e:
+        flash(f'Error cargando lista de asistencia: {e}', 'error')
+        return redirect(url_for('pase_lista'))
+
+@app.route('/guardar_asistencia', methods=['POST'])
+def guardar_asistencia():
+    try:
+        lista_id = request.form['lista_id']
+        db = Database()
+        
+        # Obtener todos los alumnos del grupo
+        alumnos = db.fetch_all("""
+            SELECT a.id 
+            FROM alumnos a
+            JOIN matriculas m ON m.alumno_id = a.id
+            JOIN listas_asistencia la ON la.grupo_id = m.grupo_id
+            WHERE la.id = %s AND m.estado = 'Activa'
+        """, (lista_id,)) or []
+        
+        for alumno in alumnos:
+            alumno_id = alumno['id']
+            
+            # Obtener valores del formulario
+            asistio = request.form.get(f'asistencia_{alumno_id}') == '1'
+            calificacion = request.form.get(f'calificacion_{alumno_id}')
+            validado = request.form.get(f'validado_{alumno_id}') == 'on'
+            
+            # Convertir calificación
+            calificacion_val = float(calificacion) if calificacion and calificacion.strip() else None
+            
+            # Verificar si ya existe un registro
+            existe = db.fetch_one("""
+                SELECT id FROM asistencias_alumnos 
+                WHERE lista_id = %s AND alumno_id = %s
+            """, (lista_id, alumno_id))
+            
+            if existe:
+                # Actualizar registro existente
+                db.execute_query("""
+                    UPDATE asistencias_alumnos 
+                    SET asistio = %s, calificacion = %s, validado = %s
+                    WHERE lista_id = %s AND alumno_id = %s
+                """, (asistio, calificacion_val, validado, lista_id, alumno_id))
+            else:
+                # Insertar nuevo registro
+                db.execute_query("""
+                    INSERT INTO asistencias_alumnos (lista_id, alumno_id, asistio, calificacion, validado)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (lista_id, alumno_id, asistio, calificacion_val, validado))
+        
+        flash('Asistencias y calificaciones guardadas exitosamente', 'success')
+    except Exception as e:
+        flash(f'Error al guardar: {str(e)}', 'error')
+    
+    return redirect(url_for('editar_lista_asistencia', lista_id=lista_id))
+
+@app.route('/eliminar_lista_asistencia', methods=['POST'])
+def eliminar_lista_asistencia():
+    try:
+        data = request.get_json()
+        lista_id = data.get('lista_id')
+        
+        db = Database()
+        
+        # Eliminar registros de asistencia primero
+        db.execute_query("DELETE FROM asistencias_alumnos WHERE lista_id = %s", (lista_id,))
+        # Eliminar la lista
+        resultado = db.execute_query("DELETE FROM listas_asistencia WHERE id = %s", (lista_id,))
+        
+        if resultado:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar la lista'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ===== RUTAS PARA VALIDACIÓN DE ASISTENCIA POR ESTUDIANTES =====
+
+@app.route('/estudiante/asistencia')
+def estudiante_asistencia():
+    """Vista para que los estudiantes validen su asistencia"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'estudiante':
+        flash('Acceso denegado', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        usuario = session['usuario']
+        db = Database()
+        
+        # Obtener información del estudiante
+        estudiante_info = obtener_info_estudiante(usuario['matricula_id'])
+        if not estudiante_info:
+            flash('No se encontró información del estudiante', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Obtener listas de asistencia del grupo del estudiante
+        grupo_id = estudiante_info['matricula_actual']['grupo_id']
+        if not grupo_id:
+            flash('No estás asignado a un grupo', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Obtener listas de asistencia recientes del grupo
+        listas_asistencia = db.fetch_all("""
+            SELECT la.*, g.nombre as grupo_nombre
+            FROM listas_asistencia la
+            JOIN grupos g ON la.grupo_id = g.id
+            WHERE la.grupo_id = %s 
+            AND la.fecha >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            ORDER BY la.fecha DESC, la.hora DESC
+        """, (grupo_id,)) or []
+        
+        # Para cada lista, obtener el estado de asistencia del estudiante
+        for lista in listas_asistencia:
+            asistencia_estudiante = db.fetch_one("""
+                SELECT aa.asistio, aa.calificacion, aa.validado
+                FROM asistencias_alumnos aa
+                WHERE aa.lista_id = %s AND aa.alumno_id = %s
+            """, (lista['id'], estudiante_info['alumno']['id']))
+            
+            if asistencia_estudiante:
+                lista['asistio_estudiante'] = asistencia_estudiante['asistio']
+                lista['calificacion_estudiante'] = asistencia_estudiante['calificacion']
+                lista['validado_estudiante'] = asistencia_estudiante['validado']
+            else:
+                lista['asistio_estudiante'] = False
+                lista['calificacion_estudiante'] = None
+                lista['validado_estudiante'] = False
+        
+        return render_template('estudiante_asistencia.html',
+                             estudiante=estudiante_info,
+                             listas_asistencia=listas_asistencia,
+                             now=datetime.now())
+        
+    except Exception as e:
+        flash(f'Error cargando asistencia: {e}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/estudiante/validar_asistencia', methods=['POST'])
+def estudiante_validar_asistencia():
+    """Permite al estudiante validar su asistencia"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'estudiante':
+        return jsonify({'success': False, 'error': 'Acceso denegado'})
+    
+    try:
+        data = request.get_json()
+        lista_id = data.get('lista_id')
+        validar = data.get('validar', True)
+        
+        usuario = session['usuario']
+        estudiante_info = obtener_info_estudiante(usuario['matricula_id'])
+        
+        if not estudiante_info:
+            return jsonify({'success': False, 'error': 'Estudiante no encontrado'})
+        
+        db = Database()
+        
+        # Verificar si existe registro de asistencia
+        asistencia_existente = db.fetch_one("""
+            SELECT id FROM asistencias_alumnos 
+            WHERE lista_id = %s AND alumno_id = %s
+        """, (lista_id, estudiante_info['alumno']['id']))
+        
+        if asistencia_existente:
+            # Actualizar validación
+            db.execute_query("""
+                UPDATE asistencias_alumnos 
+                SET validado = %s 
+                WHERE lista_id = %s AND alumno_id = %s
+            """, (validar, lista_id, estudiante_info['alumno']['id']))
+        else:
+            # Crear nuevo registro (solo con validación, sin asistencia)
+            db.execute_query("""
+                INSERT INTO asistencias_alumnos (lista_id, alumno_id, asistio, calificacion, validado)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (lista_id, estudiante_info['alumno']['id'], False, None, validar))
+        
+        # Registrar la acción en un log (opcional)
+        db.execute_query("""
+            INSERT INTO logs_validacion (lista_id, alumno_id, accion, fecha_validacion)
+            VALUES (%s, %s, %s, %s)
+        """, (lista_id, estudiante_info['alumno']['id'], 
+              'VALIDADO' if validar else 'NO_VALIDADO', 
+              datetime.now()))
+        
+        return jsonify({
+            'success': True,
+            'message': 'Asistencia validada correctamente' if validar else 'Validación removida'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/estudiante/detalle_asistencia/<int:lista_id>')
+def estudiante_detalle_asistencia(lista_id):
+    """Mostrar detalles de una lista de asistencia específica para el estudiante"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'estudiante':
+        flash('Acceso denegado', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        usuario = session['usuario']
+        db = Database()
+        
+        # Obtener información de la lista
+        lista = db.fetch_one("""
+            SELECT la.*, g.nombre as grupo_nombre, g.grado, g.turno
+            FROM listas_asistencia la
+            JOIN grupos g ON la.grupo_id = g.id
+            WHERE la.id = %s
+        """, (lista_id,))
+        
+        if not lista:
+            flash('Lista de asistencia no encontrada', 'error')
+            return redirect(url_for('estudiante_asistencia'))
+        
+        # Obtener información del estudiante
+        estudiante_info = obtener_info_estudiante(usuario['matricula_id'])
+        
+        # Obtener asistencia específica del estudiante
+        asistencia_estudiante = db.fetch_one("""
+            SELECT aa.asistio, aa.calificacion, aa.validado
+            FROM asistencias_alumnos aa
+            WHERE aa.lista_id = %s AND aa.alumno_id = %s
+        """, (lista_id, estudiante_info['alumno']['id']))
+        
+        return render_template('estudiante_detalle_asistencia.html',
+                             lista=lista,
+                             estudiante=estudiante_info,
+                             asistencia=asistencia_estudiante)
+        
+    except Exception as e:
+        flash(f'Error cargando detalle de asistencia: {e}', 'error')
+        return redirect(url_for('estudiante_asistencia'))
+    
 # ===== RUTAS DE AUTENTICACIÓN =====
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -513,7 +946,7 @@ def agregar_alumno_grupo(grupo_id):
         # Verificar que el grupo existe
         grupo = Grupo.obtener_por_id(grupo_id)
         if not grupo:
-            flash('Grupo no encontrado', 'error')
+            flash('Grupo no encontrada', 'error')
             return redirect(url_for('grupos'))
         
         # Verificar que el alumno existe

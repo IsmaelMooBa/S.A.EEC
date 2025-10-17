@@ -1,0 +1,214 @@
+{% extends "base_estudiante.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-bold text-primary mb-2">
+                <i class="bi bi-clipboard-check me-2"></i>Validar Mi Asistencia
+            </h1>
+            <p class="text-muted">Revisa y valida tu asistencia en las clases registradas</p>
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-2"></i>Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Información del Estudiante -->
+    <div class="card mb-4">
+        <div class="card-body bg-light">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary mb-1">Estudiante</h6>
+                    <h5 class="mb-0">{{ estudiante.alumno.nombre }} {{ estudiante.alumno.apellido }}</h5>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-primary mb-1">Matrícula</h6>
+                    <h5 class="mb-0">{{ estudiante.matricula_actual.codigo_matricula }}</h5>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-primary mb-1">Grupo</h6>
+                    <h5 class="mb-0">{{ estudiante.grupo.nombre }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Asistencias -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-list-check me-2"></i>Registros de Asistencia
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if listas_asistencia %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Materia</th>
+                            <th>Profesor</th>
+                            <th>Asistencia</th>
+                            <th>Calificación</th>
+                            <th>Validación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lista in listas_asistencia %}
+                        <tr>
+                            <td>
+                                <strong>{{ lista.fecha.strftime('%d/%m/%Y') }}</strong>
+                                <br><small class="text-muted">{{ lista.hora }}</small>
+                            </td>
+                            <td>{{ lista.materia }}</td>
+                            <td>{{ lista.profesor }}</td>
+                            <td class="text-center">
+                                {% if lista.asistio_estudiante %}
+                                    <span class="badge bg-success">✅ Asistió</span>
+                                {% else %}
+                                    <span class="badge bg-danger">❌ No Asistió</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if lista.calificacion_estudiante is not none %}
+                                    <span class="badge bg-info">{{ lista.calificacion_estudiante }}%</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if lista.validado_estudiante %}
+                                    <span class="badge bg-success">✅ Validado</span>
+                                {% else %}
+                                    <span class="badge bg-warning">⏳ Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('estudiante_detalle_asistencia', lista_id=lista.id) }}" 
+                                       class="btn btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                    {% if not lista.validado_estudiante %}
+                                    <button type="button" 
+                                            class="btn btn-outline-success validar-btn"
+                                            data-lista-id="{{ lista.id }}">
+                                        <i class="bi bi-check-circle"></i> Validar
+                                    </button>
+                                    {% else %}
+                                    <button type="button" 
+                                            class="btn btn-outline-warning invalidar-btn"
+                                            data-lista-id="{{ lista.id }}">
+                                        <i class="bi bi-x-circle"></i> Remover
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-clipboard-x display-1 text-muted"></i>
+                <h4 class="text-muted mt-3">No hay registros de asistencia</h4>
+                <p class="text-muted">No se encontraron listas de asistencia para tu grupo en los últimos 30 días.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Información de Ayuda -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Información Importante</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>¿Qué es la validación?</h6>
+                    <p class="small text-muted">
+                        La validación confirma que la información de tu asistencia y calificación es correcta. 
+                        Al validar, confirmas que los datos registrados por el profesor son precisos.
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h6>¿Por qué es importante?</h6>
+                    <p class="small text-muted">
+                        Tu validación ayuda a mantener registros precisos y permite que los administradores 
+                        tengan confirmación de que la información ha sido revisada y aceptada por ti.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validar asistencia
+    document.querySelectorAll('.validar-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const listaId = this.dataset.listaId;
+            validarAsistencia(listaId, true);
+        });
+    });
+
+    // Remover validación
+    document.querySelectorAll('.invalidar-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const listaId = this.dataset.listaId;
+            validarAsistencia(listaId, false);
+        });
+    });
+
+    function validarAsistencia(listaId, validar) {
+        fetch('{{ url_for("estudiante_validar_asistencia") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                lista_id: listaId,
+                validar: validar
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Recargar la página para ver los cambios
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al procesar la solicitud');
+        });
+    }
+});
+</script>
+
+<style>
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+</style>
+{% endblock %}

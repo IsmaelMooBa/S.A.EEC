@@ -167,6 +167,52 @@ class Database:
                 )
             """)
             
+            # Tabla de Usuarios
+            temp_cursor.execute("""
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    rol ENUM('admin', 'estudiante', 'profesor') DEFAULT 'estudiante',
+                    matricula_id INT,
+                    activo BOOLEAN DEFAULT TRUE,
+                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    ultimo_login TIMESTAMP NULL,
+                    FOREIGN KEY (matricula_id) REFERENCES matriculas(id) ON DELETE SET NULL
+                )
+            """)
+            
+            # Tabla para listas de asistencia
+            temp_cursor.execute("""
+                CREATE TABLE IF NOT EXISTS listas_asistencia (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    grupo_id INT NOT NULL,
+                    fecha DATE NOT NULL,
+                    mes VARCHAR(20) NOT NULL,
+                    hora TIME NOT NULL,
+                    materia VARCHAR(100) NOT NULL,
+                    profesor VARCHAR(100) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (grupo_id) REFERENCES grupos(id)
+                )
+            """)
+            
+            # Tabla para registro de asistencia por alumno
+            temp_cursor.execute("""
+                CREATE TABLE IF NOT EXISTS asistencias_alumnos (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    lista_id INT NOT NULL,
+                    alumno_id INT NOT NULL,
+                    asistio BOOLEAN DEFAULT FALSE,
+                    calificacion DECIMAL(3,1) NULL,
+                    validado BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (lista_id) REFERENCES listas_asistencia(id) ON DELETE CASCADE,
+                    FOREIGN KEY (alumno_id) REFERENCES alumnos(id),
+                    UNIQUE KEY unique_asistencia (lista_id, alumno_id)
+                )
+            """)
+            
             temp_connection.commit()
             temp_cursor.close()
             temp_connection.close()

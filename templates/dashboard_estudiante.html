@@ -101,6 +101,23 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Validación de Asistencia -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card module-card border-success h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="module-icon bg-success rounded-circle mx-auto mb-3">
+                        <i class="bi bi-clipboard-check text-white fs-2"></i>
+                    </div>
+                    <h5 class="card-title text-success mb-2">Validar Asistencia</h5>
+                    <p class="text-muted mb-3">Revisa y valida tu asistencia en las clases</p>
+                    <a href="{{ url_for('estudiante_asistencia') }}" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Validar Mi Asistencia
+                    </a>
+                </div>
+            </div>
+        </div>
+        
         <!-- Información del Grupo -->
         <div class="col-xl-4 col-md-6">
             <div class="card module-card border-warning h-100 shadow-sm">
@@ -232,55 +249,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Historial de Matrículas (si existe) -->
-    {% if estudiante and estudiante.historial_matriculas %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title mb-0 text-white">
-                        <i class="bi bi-list-check me-2 text-white"></i>Historial de Matrículas
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Año Escolar</th>
-                                    <th>Grupo</th>
-                                    <th>Fecha de Matrícula</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for matricula in estudiante.historial_matriculas %}
-                                <tr>
-                                    <td><strong>{{ matricula.anio_escolar }}</strong></td>
-                                    <td>
-                                        {% if matricula.grupo_nombre %}
-                                            {{ matricula.grupo_nombre }}
-                                        {% else %}
-                                            <span class="text-muted">Sin grupo</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ matricula.fecha_matricula }}</td>
-                                    <td>
-                                        <span class="badge {% if matricula.estado == 'Activa' %}bg-success{% else %}bg-secondary{% endif %}">
-                                            {{ matricula.estado }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 </div>
 
 <style>
