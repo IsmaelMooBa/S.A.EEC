@@ -22,10 +22,20 @@
                     <i class="bi bi-clipboard-check me-2"></i>{{ total_matriculas }} Matrículas
                 </span>
             </div>
+            <div class="col-auto">
+                <span class="badge bg-info fs-6 p-2">
+                    <i class="bi bi-clock me-2"></i>{{ total_horarios }} Horarios
+                </span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-purple fs-6 p-2">
+                    <i class="bi bi-clipboard-check me-2"></i>{{ total_asistencias }} Asistencias
+                </span>
+            </div>
         </div>
     </div>
 
-    <!-- Tarjetas Principales de Módulos -->
+    <!-- Tarjetas Principales de Módulos 
     <div class="row g-4 mb-5">
         <div class="col-xl-3 col-md-6">
             <div class="card module-card border-primary h-100 shadow-sm">
@@ -103,7 +113,7 @@
         </div>
     </div>
 
-        <!-- Tarjeta para Pase de Lista -->
+        <!-- Tarjeta para Pase de Lista
     <div class="col-xl-3 col-md-6">
         <div class="card module-card border-purple h-100 shadow-sm">
             <div class="card-body text-center p-4">
@@ -119,7 +129,7 @@
         </div>
     </div>
 
-    <!-- Gestión de Usuarios - Ahora arriba del resumen -->
+    <!-- Gestión de Usuarios - Ahora arriba del resumen 
     <div class="row g-4 mb-4">
         <div class="col-12">
             <div class="card bg-gradient-users shadow-sm border-0">
@@ -143,7 +153,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Panel de Estadísticas y Acciones Rápidas -->
     <div class="row g-4">
@@ -219,6 +229,7 @@
                                 <span>Matrículas</span>
                                 <span>{{ total_matriculas }}</span>
                             </div>
+
                             <div class="progress mb-3" style="height: 8px;">
                                 <div class="progress-bar bg-warning" style="width: {% if total_matriculas > 0 %}80{% else %}0{% endif %}%"></div>
                             </div>
@@ -267,6 +278,14 @@
                             <div>
                                 <strong>Gestión de Usuarios</strong>
                                 <small class="d-block text-muted">Administrar acceso</small>
+                            </div>
+                        </a>
+
+                        <a href="{{ url_for('pase_lista') }}" class="btn btn-outline-purple btn-lg text-start py-3">
+                            <i class="bi bi-clipboard-check me-2"></i>
+                            <div>
+                                <strong>Gestionar Pase de Lista</strong>
+                                <small class="d-block text-muted">Registrar asistencias</small>
                             </div>
                         </a>
                     </div>

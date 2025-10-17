@@ -44,12 +44,6 @@
     <input type="hidden" name="lista_id" value="{{ lista.id }}">
     
     <div class="card">
-        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">🎯 Registro de Asistencia y Calificaciones</h5>
-            <button type="submit" class="btn btn-light btn-sm">
-                💾 Guardar Cambios
-            </button>
-        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-striped table-hover mb-0">
@@ -185,20 +179,20 @@
         <div class="row text-center">
             <div class="col-md-3">
                 <div class="border rounded p-3 bg-primary bg-opacity-10">
-                    <h3 class="text-primary">{{ total_alumnos }}</h3>
-                    <small class="text-muted">Total Alumnos</small>
+                    <h3 class="text-white">{{ total_alumnos }}</h3>
+                    <small class="text-white">Total Alumnos</small>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="border rounded p-3 bg-success bg-opacity-10">
-                    <h3 class="text-success" id="resumen-asistencia">{{ total_asistencia }}</h3>
-                    <small class="text-muted">Asistieron</small>
+                    <h3 class="text-white" id="resumen-asistencia">{{ total_asistencia }}</h3>
+                    <small class="text-white">Asistieron</small>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="border rounded p-3 bg-warning bg-opacity-10">
-                    <h3 class="text-warning" id="resumen-faltas">{{ total_alumnos - total_asistencia }}</h3>
-                    <small class="text-muted">Faltaron</small>
+                    <h3 class="text-white" id="resumen-faltas">{{ total_alumnos - total_asistencia }}</h3>
+                    <small class="text-white">Faltaron</small>
                 </div>
             </div>
             <div class="col-md-3">
@@ -344,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Botones rápidos para marcar/desmarcar todos -->
+<!-- Botones rápidos para marcar/desmarcar todos
 <div class="card mt-4">
     <div class="card-header bg-secondary text-white">
         <h6 class="mb-0">⚡ Acciones Rápidas</h6>
@@ -359,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </button>
         </div>
     </div>
-</div>
+</div>  -->
 
 <style>
 .btn-check:checked + .btn-outline-success {
