@@ -1,0 +1,392 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-5 fw-bold text-primary mb-3">
+        <i class="bi bi-person-badge me-3"></i>Generador de Credenciales Estudiantiles
+    </h1>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Volver al Inicio
+    </a>
+</div>
+
+<!-- Información del Proceso -->
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-info-circle me-2"></i>Instrucciones
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <h6>Proceso de Generación de Credenciales</h6>
+                <p class="mb-2">Sube un archivo CSV con la información de los estudiantes para generar sus credenciales automáticamente.</p>
+                <ul class="mb-0">
+                    <li>El archivo debe contener las columnas: <strong>CÓDIGO, ALUMNO y AÑO ESCOLAR</strong></li>
+                    <li>Solo se procesarán registros con estado "Activa"</li>
+                    <li>Las fotos deben estar en la carpeta <code>static/fotos/</code> con el nombre del código</li>
+                </ul>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="bg-primary bg-opacity-10 p-3 rounded-3">
+                    <i class="bi bi-file-earmark-spreadsheet display-4 text-primary"></i>
+                    <p class="mt-2 mb-0"><strong>Formato CSV</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div class="alert alert-danger alert-dismissible fade show d-none" id="errorAlert" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <span id="errorMessage"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+
+<div class="alert alert-success alert-dismissible fade show d-none" id="successAlert" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <span id="successMessage"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+
+<!-- Área de Subida -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-cloud-upload me-2"></i>Subir Archivo CSV
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="upload-area border-dashed rounded-3 p-5 text-center" id="uploadArea">
+            <i class="bi bi-file-earmark-spreadsheet display-1 text-primary mb-3"></i>
+            <h5 class="text-primary mb-3">Arrastra y suelta tu archivo CSV aquí</h5>
+            <p class="text-muted mb-4">O haz clic para seleccionar un archivo</p>
+            <input type="file" id="csvFile" class="d-none" accept=".csv">
+            <button type="button" class="btn btn-primary btn-lg" onclick="document.getElementById('csvFile').click()">
+                <i class="bi bi-folder2-open me-2"></i>Seleccionar Archivo CSV
+            </button>
+            <div class="mt-3">
+                <small class="text-muted">Formatos aceptados: .csv | Tamaño máximo: 10MB</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading -->
+<div class="card mb-4 d-none" id="loadingCard">
+    <div class="card-body text-center py-5">
+        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Procesando...</span>
+        </div>
+        <h5 class="text-primary">Procesando archivo CSV</h5>
+        <p class="text-muted mb-0">Por favor espere mientras se procesan los datos...</p>
+    </div>
+</div>
+
+<!-- Vista Previa -->
+<div class="card d-none" id="previewCard">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-eye me-2"></i>Vista Previa de Datos
+        </h5>
+        <span class="badge bg-light text-dark fs-6" id="previewCount">0 registros</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th width="120">Código</th>
+                        <th>Nombre del Estudiante</th>
+                        <th width="120">Año Escolar</th>
+                        <th width="100">Archivo de Foto</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Datos se llenarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Verifique que los datos sean correctos antes de generar las credenciales
+                </small>
+            </div>
+            <button type="button" class="btn btn-success btn-lg" onclick="generarCredenciales()">
+                <i class="bi bi-person-badge me-2"></i>Generar Credenciales
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Información Adicional -->
+<div class="card mt-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i>Información Adicional
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Estructura del CSV</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Columna</th>
+                                <th>Descripción</th>
+                                <th>Ejemplo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>CÓDIGO</strong></td>
+                                <td>Código único del estudiante</td>
+                                <td>EEC-2024-001</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ALUMNO</strong></td>
+                                <td>Nombre completo</td>
+                                <td>Juan Pérez García</td>
+                            </tr>
+                            <tr>
+                                <td><strong>AÑO ESCOLAR</strong></td>
+                                <td>Año académico</td>
+                                <td>2024</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6>Requisitos de Fotos</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Formato: JPG o PNG
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Nombre: [CÓDIGO].jpg (ej: EEC-2024-001.jpg)
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Ubicación: <code>static/fotos/</code>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Tamaño recomendado: 350x400 px
+                    </li>
+                </ul>
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Nota:</strong> Si no se encuentra la foto, se mostrará una imagen por defecto.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.upload-area {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px dashed #6c757d;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #1976d2;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e3f2fd 100%);
+}
+
+.upload-area.dragover {
+    border-color: #1976d2;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}
+
+.table-actions {
+    white-space: nowrap;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+</style>
+
+<script>
+let datosProcesados = [];
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar evento de cambio de archivo
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            procesarCSV(file);
+        }
+    });
+
+    // Configurar drag and drop
+    const uploadArea = document.getElementById('uploadArea');
+    
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type === 'text/csv') {
+            document.getElementById('csvFile').files = files;
+            procesarCSV(files[0]);
+        } else {
+            mostrarError('Por favor, suelta un archivo CSV válido');
+        }
+    });
+
+    // Hacer el área de upload clickeable
+    uploadArea.addEventListener('click', function() {
+        document.getElementById('csvFile').click();
+    });
+});
+
+function mostrarError(mensaje) {
+    const alert = document.getElementById('errorAlert');
+    const message = document.getElementById('errorMessage');
+    message.textContent = mensaje;
+    alert.classList.remove('d-none');
+    alert.classList.add('show');
+}
+
+function mostrarExito(mensaje) {
+    const alert = document.getElementById('successAlert');
+    const message = document.getElementById('successMessage');
+    message.textContent = mensaje;
+    alert.classList.remove('d-none');
+    alert.classList.add('show');
+}
+
+function ocultarAlertas() {
+    document.getElementById('errorAlert').classList.add('d-none');
+    document.getElementById('successAlert').classList.add('d-none');
+}
+
+function procesarCSV(file) {
+    ocultarAlertas();
+    
+    const loadingCard = document.getElementById('loadingCard');
+    const previewCard = document.getElementById('previewCard');
+    
+    // Mostrar loading
+    loadingCard.classList.remove('d-none');
+    previewCard.classList.add('d-none');
+
+    const formData = new FormData();
+    formData.append('archivo_csv', file);
+
+    fetch('/procesar_csv_credenciales', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+        return response.json();
+    })
+    .then(data => {
+        loadingCard.classList.add('d-none');
+        
+        if (data.error) {
+            mostrarError(data.error);
+            return;
+        }
+
+        datosProcesados = data.datos;
+        mostrarVistaPrevia(data.datos);
+        mostrarExito(`Se procesaron ${data.total} registros activos correctamente`);
+    })
+    .catch(error => {
+        loadingCard.classList.add('d-none');
+        console.error('Error:', error);
+        mostrarError('Error al procesar el archivo: ' + error.message);
+    });
+}
+
+function mostrarVistaPrevia(datos) {
+    const tableBody = document.getElementById('tableBody');
+    const previewCount = document.getElementById('previewCount');
+    const previewCard = document.getElementById('previewCard');
+
+    tableBody.innerHTML = '';
+    previewCount.textContent = `${datos.length} registros`;
+    
+    datos.forEach((dato, index) => {
+        const row = document.createElement('tr');
+        row.className = 'fade-in';
+        row.style.animationDelay = `${index * 0.1}s`;
+        row.innerHTML = `
+            <td><strong>${dato.matricula}</strong></td>
+            <td>${dato.nombre}</td>
+            <td><span class="badge bg-info">${dato.ano_escolar}</span></td>
+            <td><code>${dato.foto}</code></td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    previewCard.classList.remove('d-none');
+    previewCard.scrollIntoView({ behavior: 'smooth' });
+}
+
+function generarCredenciales() {
+    if (datosProcesados.length === 0) {
+        mostrarError('No hay datos para generar credenciales');
+        return;
+    }
+
+    // Mostrar confirmación
+    if (!confirm(`¿Está seguro de generar ${datosProcesados.length} credenciales?`)) {
+        return;
+    }
+
+    // Crear formulario dinámico para enviar datos
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/generar_credenciales';
+    form.style.display = 'none';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'datos';
+    input.value = JSON.stringify(datosProcesados);
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}

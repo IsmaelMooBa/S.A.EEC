@@ -62,6 +62,12 @@
                            <i class="bi bi-journal-check"></i> Asistencias
                         </a>    
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'credenciales_index' }}" 
+                           href="{{ url_for('credenciales_index') }}">
+                           <i class="bi bi-file-earmark-text"></i> Credenciales
+                        </a>
+                    </li>
                 </ul>
 
                 <!-- Menú de usuario - SOLO si está logueado -->

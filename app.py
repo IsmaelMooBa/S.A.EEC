@@ -1,7 +1,11 @@
 import os
 import sys
+import base64
+import json
+import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from datetime import datetime
+from io import BytesIO
 
 # Añade el directorio actual al path de Python
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -12,6 +16,14 @@ app.secret_key = 'tu_clave_secreta_muy_segura_aqui_2024'
 # Configuración de sesión
 app.config['SECRET_KEY'] = 'tu_clave_secreta_muy_segura_aqui_2024'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600000  # 1 hora
+
+# AGREGAR ESTAS CONFIGURACIONES NUEVAS:
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['STATIC_FOLDER'] = 'static'
+
+# Crear directorios si no existen
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(os.path.join(app.config['STATIC_FOLDER'], 'fotos'), exist_ok=True)
 
 # Importación después de configurar el path
 try:
@@ -120,6 +132,67 @@ def initialize_database_once():
             
         except Exception as e:
             print(f"❌ Error inicializando BD: {e}")
+            
+def procesar_csv(archivo_csv):
+    """Procesa el archivo CSV y devuelve los datos en formato JSON"""
+    try:
+        # Leer el archivo CSV
+        df = pd.read_csv(archivo_csv)
+        
+        print("Columnas encontradas:", df.columns.tolist())
+        print("Primeras filas:", df.head().to_dict())
+        
+        # Verificar columnas requeridas - con manejo de encoding
+        columnas_requeridas = ['CÓDIGO', 'ALUMNO', 'AÑO ESCOLAR']
+        
+        # Verificar si las columnas existen (con tildes)
+        columnas_encontradas = []
+        for columna in columnas_requeridas:
+            if columna in df.columns:
+                columnas_encontradas.append(columna)
+            else:
+                # Intentar encontrar columnas sin tildes o con encoding diferente
+                columnas_sin_tildes = {
+                    'CÓDIGO': ['CODIGO', 'CÓDIGO'],
+                    'ALUMNO': ['ALUMNO', 'NOMBRE', 'ESTUDIANTE'],
+                    'AÑO ESCOLAR': ['AÑO ESCOLAR', 'AÑO', 'ANO ESCOLAR', 'ESCOLAR']
+                }
+                
+                for variante in columnas_sin_tildes.get(columna, []):
+                    if variante in df.columns:
+                        # Renombrar la columna al nombre esperado
+                        df = df.rename(columns={variante: columna})
+                        columnas_encontradas.append(columna)
+                        break
+                else:
+                    return None, f"Falta la columna requerida: {columna}"
+        
+        # Filtrar solo registros con estado "Activa"
+        if 'ESTADO' in df.columns:
+            df = df[df['ESTADO'] == 'Activa']
+            print(f"Registros después de filtrar activos: {len(df)}")
+        
+        # Crear estructura de datos para credenciales
+        datos_credenciales = []
+        for _, fila in df.iterrows():
+            credencial = {
+                'nombre': fila['ALUMNO'],
+                'rol': 'ESTUDIANTE',  # Todos serán estudiantes
+                'matricula': fila['CÓDIGO'],
+                'ano_escolar': str(fila['AÑO ESCOLAR']),  # Convertir a string
+                'foto': f"{fila['CÓDIGO']}.jpg",  # Asumiendo que las fotos se llaman como el código
+                'telefono': '',
+                'email': ''
+            }
+            datos_credenciales.append(credencial)
+        
+        print(f"Datos procesados: {len(datos_credenciales)} credenciales")
+        return datos_credenciales, None
+        
+    except Exception as e:
+        import traceback
+        print(f"Error completo: {traceback.format_exc()}")
+        return None, f"Error al procesar el CSV: {str(e)}"
 
 # ===== RUTAS PARA PASE DE LISTA =====
 
@@ -1840,6 +1913,106 @@ def admin_generar_todos_usuarios():
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+    
+# ===== RUTAS PARA GENERACIÓN DE CREDENCIALES =====
+
+@app.route('/credenciales')
+def credenciales_index():
+    """Página principal para generar credenciales"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        flash('Acceso denegado', 'error')
+        return redirect(url_for('dashboard'))
+    return render_template('generar_credenciales.html')
+
+@app.route('/procesar_csv_credenciales', methods=['POST'])
+def procesar_csv_credenciales():
+    """Procesa el archivo CSV para credenciales"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        return jsonify({'error': 'Acceso denegado'}), 403
+    
+    try:
+        if 'archivo_csv' not in request.files:
+            return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
+        
+        archivo = request.files['archivo_csv']
+        
+        if archivo.filename == '':
+            return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
+        
+        if not archivo.filename.lower().endswith('.csv'):
+            return jsonify({'error': 'El archivo debe ser un CSV'}), 400
+        
+        # Guardar el archivo CSV en la carpeta uploads
+        if archivo:
+            # Crear un nombre único para el archivo con timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            nombre_archivo = f"csv_{timestamp}_{archivo.filename}"
+            ruta_archivo = os.path.join(app.config['UPLOAD_FOLDER'], nombre_archivo)
+            archivo.save(ruta_archivo)
+            print(f"Archivo guardado en: {ruta_archivo}")
+        
+        # Procesar el CSV (usar el archivo guardado o el original)
+        archivo.seek(0)  # Volver al inicio del archivo para procesarlo
+        datos, error = procesar_csv(archivo)
+        
+        if error:
+            return jsonify({'error': error}), 400
+        
+        return jsonify({
+            'success': True,
+            'datos': datos,
+            'total': len(datos),
+            'archivo_guardado': nombre_archivo
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Error del servidor: {str(e)}'}), 500
+
+@app.route('/generar_credenciales', methods=['POST'])
+def generar_credenciales():
+    """Genera las credenciales en formato HTML para imprimir"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        return jsonify({'error': 'Acceso denegado'}), 403
+    
+    try:
+        # Obtener datos del formulario
+        datos_json = request.form.get('datos')
+        
+        if not datos_json:
+            return jsonify({'error': 'No hay datos para generar credenciales'}), 400
+        
+        # Convertir string JSON a objeto Python
+        datos = json.loads(datos_json)
+        
+        if not datos:
+            return jsonify({'error': 'No hay datos válidos para generar credenciales'}), 400
+        
+        print(f"Generando {len(datos)} credenciales...")
+        
+        # AGREGAR ESTA LÍNEA: Pasar la fecha actual al template
+        return render_template('credenciales.html', 
+                             datos=datos, 
+                             now=datetime.now())  # ← Agregar esta variable
+        
+    except json.JSONDecodeError as e:
+        return jsonify({'error': f'Error al decodificar JSON: {str(e)}'}), 400
+    except Exception as e:
+        import traceback
+        print(f"Error en generar_credenciales: {traceback.format_exc()}")
+        return jsonify({'error': f'Error al generar credenciales: {str(e)}'}), 500
+
+@app.route('/archivos_csv')
+def listar_archivos_csv():
+    """Lista los archivos CSV guardados (solo admin)"""
+    if 'usuario' not in session or session['usuario']['rol'] != 'admin':
+        return jsonify({'error': 'Acceso denegado'}), 403
+    
+    try:
+        archivos = os.listdir(app.config['UPLOAD_FOLDER'])
+        archivos_csv = [f for f in archivos if f.lower().endswith('.csv')]
+        return jsonify({'archivos': archivos_csv})
+    except Exception as e:
+        return jsonify({'error': f'Error al listar archivos: {str(e)}'}), 500
 
 if __name__ == '__main__':
     print("🚀 Iniciando servidor Flask...")

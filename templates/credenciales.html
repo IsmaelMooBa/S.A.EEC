@@ -1,0 +1,556 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-5 fw-bold text-primary mb-3">
+        <i class="bi bi-person-badge me-3"></i>Credenciales Estudiantiles Generadas
+    </h1>
+    <div class="btn-group">
+        <button class="btn btn-success" onclick="window.print()">
+            <i class="bi bi-printer me-2"></i>Imprimir Credenciales
+        </button>
+        <a href="{{ url_for('credenciales_index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+</div>
+
+<!-- Credenciales - Diseño Original -->
+<div class="credenciales-container d-print-block">
+    {% for persona in datos %}
+    <div class="credencial">
+        <!-- Frente -->
+        <div class="card front">
+            <div class="decorative-circle circle-1"></div>
+            <div class="decorative-circle circle-2"></div>
+            
+            <div class="photo-container">
+                <div class="photo">
+                    <img src="{{ url_for('static', filename='fotos/' + persona.foto) }}" 
+                         alt="Foto de {{ persona.nombre }}" 
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzUwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDM1MCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzNTAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xNzUgMTEwQzE0NS41NTIgMTEwIDEyMSAxMzQuNTUyIDEyMSAxNjRDMTIxIDE5My40NDggMTQ1LjU1MiAyMTggMTc1IDIxOEMyMDQuNDQ4IDIxOCAyMjkgMTkzLjQ0OCAyMjkgMTY0QzIyOSAxMzQuNTUyIDIwNC40NDggMTEwIDE3NSAxMTBaTTE3NSAyNTBDMTMxLjg2IDI1MCA5NiAyODUuODYgOTYgMzI5SDI1NEMyNTQgMjg1Ljg2IDIxOC4xNCAyNTAgMTc1IDI1MFoiIGZpbGw9IiNENkQ2RDYiLz4KPC9zdmc+'">
+                </div>
+                <div class="status-indicator"></div>
+            </div>
+            
+            <div class="info">
+                <div class="name">{{ persona.nombre }}</div>
+                <div class="role role-estudiante">{{ persona.rol }}</div>
+                <div class="matricula">{{ persona.matricula }}</div>
+            </div>
+            
+            <div class="footer">Easy English Cool</div>
+        </div>
+
+        <!-- Reverso -->
+        <div class="card back">
+            <div class="back-content">
+                <div class="matricula">{{ persona.matricula }}</div>
+                
+                <div class="contact-info">
+                    <div><strong>Año Escolar:</strong> {{ persona.ano_escolar }}</div>
+                </div>
+                <div class="barcode"></div>
+                <div class="firma">Coordinadora Diana Diaz Gonzalez</div>
+                <div class="validity">
+                    Válida durante el año {{ persona.ano_escolar }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Información adicional para pantalla -->
+<div class="mt-4 d-print-none">
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Nota:</strong> Las credenciales se muestran en su tamaño real (65mm x 100mm). 
+        Use el botón "Imprimir Credenciales" para obtener la versión impresa optimizada.
+    </div>
+</div>
+
+<!-- Pie de página para impresión -->
+<div class="d-none d-print-block mt-4">
+    <hr>
+    <div class="text-center text-muted">
+        <small>
+            Generado el <span id="fechaGeneracion"></span> | 
+            Easy English Cool - Sistema de Gestión Educativa
+        </small>
+    </div>
+</div>
+
+<style>
+/* Variables originales del diseño */
+:root {
+    --w: 65mm;
+    --h: 100mm;
+    --teal: #6cc3d5;
+    --teal-dark: #4da8b9;
+    --teal-light: #8ed4e3;
+    --yellow: #f5b21a;
+    --yellow-dark: #d89c15;
+    --yellow-light: #f8c654;
+    --dark: #222;
+    --white: #fff;
+    --light-gray: #f8f9fa;
+    --medium-gray: #e9ecef;
+}
+
+/* Contenedor principal de credenciales */
+.credenciales-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.credencial {
+    display: flex;
+    gap: 5mm;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.card {
+    width: var(--w);
+    height: var(--h);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 
+        0 6px 18px rgba(0,0,0,0.12),
+        0 2px 4px rgba(0,0,0,0.08);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+        0 12px 24px rgba(0,0,0,0.15),
+        0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* --- FRENTE --- */
+.front {
+    background: linear-gradient(160deg, var(--teal) 0%, var(--teal-dark) 70%);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 8mm 6mm;
+    box-sizing: border-box;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Patrón decorativo superior */
+.front::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 30%;
+    background: 
+        linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%),
+        repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.03) 5px, rgba(255,255,255,0.03) 10px);
+    z-index: 1;
+    border-bottom-left-radius: 50% 20%;
+    border-bottom-right-radius: 50% 20%;
+}
+
+/* Elementos decorativos */
+.decorative-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+}
+
+.circle-1 {
+    width: 80px;
+    height: 80px;
+    top: -20px;
+    right: -20px;
+}
+
+.circle-2 {
+    width: 40px;
+    height: 40px;
+    bottom: 30px;
+    left: -10px;
+}
+
+/* Marca de agua del logo */
+.front::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    height: 90%;
+    background: url('{{ url_for("static", filename="img/Logotipo_EEC-removebg-preview.png") }}') center/contain no-repeat;
+    opacity: 0.06;
+    z-index: 0;
+}
+
+.logo-container {
+    width: 32mm;
+    height: 14mm;
+    background: var(--white);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 3mm;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.logo-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--teal) 0%, var(--yellow) 100%);
+}
+
+.logo-text {
+    font-weight: 800;
+    font-size: 9pt;
+    background: linear-gradient(90deg, var(--teal) 0%, var(--teal-dark) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.institution {
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Foto con marco mejorado */
+.photo-container {
+    position: relative;
+    margin: 3mm 0;
+    z-index: 2;
+}
+
+.photo {
+    width: 36mm;
+    height: 42mm;
+    background: var(--light-gray);
+    border: 4px solid var(--white);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+}
+
+.photo:hover {
+    transform: scale(1.02);
+}
+
+.photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.photo:hover img {
+    transform: scale(1.05);
+}
+
+/* Indicador de estado activo */
+.status-indicator {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    background: var(--yellow);
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--yellow-light);
+    z-index: 3;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(245, 178, 26, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(245, 178, 26, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 178, 26, 0); }
+}
+
+/* Información del titular */
+.info {
+    margin-top: 4mm;
+    z-index: 2;
+    width: 100%;
+}
+
+.name {
+    font-size: 12.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.3;
+    margin-bottom: 2mm;
+    letter-spacing: 0.7px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.role {
+    background: linear-gradient(135deg, var(--yellow) 0%, var(--yellow-dark) 100%);
+    color: #111;
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 9pt;
+    font-weight: 700;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.matricula {
+    font-size: 9.5pt;
+    margin-top: 4mm;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+/* Pie de página */
+.footer {
+    margin-top: auto;
+    background: linear-gradient(90deg, var(--yellow) 0%, var(--yellow-light) 100%);
+    color: #0a5d58;
+    width: 100%;
+    text-align: center;
+    font-weight: 800;
+    font-size: 10.5pt;
+    padding: 3.5mm 0;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    z-index: 2;
+    box-shadow: 0 -3px 6px rgba(0,0,0,0.1);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+/* --- REVERSO --- */
+.back {
+    background: var(--white);
+    color: var(--dark);
+    padding: 8mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9pt;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Logo como fondo en el reverso */
+.back::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    height: 85%;
+    background: url('{{ url_for("static", filename="img/Logotipo_EEC-removebg-preview.png") }}') center/contain no-repeat;
+    opacity: 0.08;
+    z-index: 0;
+}
+
+/* Patrón de puntos en el reverso */
+.back::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(var(--teal-light) 1px, transparent 1px);
+    background-size: 10px 10px;
+    opacity: 0.15;
+    z-index: 0;
+}
+
+.back-content {
+    width: 100%;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.back .matricula {
+    font-weight: 800;
+    color: var(--teal-dark);
+    font-size: 10.5pt;
+    margin-bottom: 4mm;
+    background: var(--light-gray);
+    padding: 6px 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    width: 100%;
+}
+
+.contact-info {
+    background: var(--light-gray);
+    padding: 4mm;
+    border-radius: 8px;
+    margin: 3mm 0;
+    width: 100%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.contact-info div {
+    margin-bottom: 2mm;
+    font-size: 8pt;
+}
+
+.contact-info div:last-child {
+    margin-bottom: 0;
+}
+
+.firma {
+    border-top: 2px solid var(--teal);
+    width: 80%;
+    text-align: center;
+    font-size: 8.5pt;
+    padding-top: 3mm;
+    margin: 5mm 0 8mm;
+    font-weight: 600;
+    color: var(--teal-dark);
+}
+
+.notice {
+    font-size: 8.5pt;
+    color: #555;
+    line-height: 1.4;
+    margin-top: auto;
+    background: var(--light-gray);
+    padding: 4mm;
+    border-radius: 8px;
+    width: 100%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.validity {
+    font-size: 7.5pt;
+    color: var(--teal-dark);
+    margin-top: 2mm;
+    font-weight: 600;
+}
+
+.barcode {
+    width: 100%;
+    height: 20px;
+    background: 
+        repeating-linear-gradient(90deg, 
+        #000, #000 2px, 
+        transparent 2px, transparent 4px);
+    margin: 3mm 0;
+    border-radius: 2px;
+}
+
+/* Estilos para diferentes roles */
+.role-estudiante {
+    background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%) !important;
+}
+
+/* Estilos de impresión */
+@media print {
+    body { 
+        background: none !important; 
+        margin: 0 !important; 
+        padding: 0 !important;
+    }
+    
+    .d-print-none {
+        display: none !important;
+    }
+    
+    .credenciales-container {
+        background: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .credencial {
+        margin-bottom: 0;
+        break-inside: avoid;
+    }
+    
+    .card { 
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        margin: 2mm !important;
+    }
+    
+    .card:hover {
+        transform: none !important;
+        box-shadow: none !important;
+    }
+}
+
+/* Responsive para pantalla */
+@media (max-width: 768px) {
+    .credenciales-container {
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .credencial {
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+function mostrarVistaPrevia() {
+    window.print();
+}
+
+// Configurar fecha actual si no viene del servidor
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaActual = document.getElementById('fechaActual');
+    const fechaGeneracion = document.getElementById('fechaGeneracion');
+    
+    if (!fechaActual.textContent.trim()) {
+        const ahora = new Date();
+        fechaActual.textContent = ahora.toISOString().split('T')[0];
+    }
+    
+    if (fechaGeneracion) {
+        const ahora = new Date();
+        fechaGeneracion.textContent = ahora.toLocaleDateString('es-ES') + ' a las ' + ahora.toLocaleTimeString('es-ES');
+    }
+});
+</script>
+{% endblock %}

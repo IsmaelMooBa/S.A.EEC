@@ -32,128 +32,13 @@
                     <i class="bi bi-clipboard-check me-2"></i>{{ total_asistencias }} Asistencias
                 </span>
             </div>
-        </div>
-    </div>
-
-    <!-- Tarjetas Principales de Módulos 
-    <div class="row g-4 mb-5">
-        <div class="col-xl-3 col-md-6">
-            <div class="card module-card border-primary h-100 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="module-icon bg-primary rounded-circle mx-auto mb-3">
-                        <i class="bi bi-people-fill text-white fs-2"></i>
-                    </div>
-                    <h5 class="card-title text-primary mb-2">Gestión de Alumnos</h5>
-                    <p class="card-text text-muted mb-3">{{ total_alumnos }} alumnos registrados en el sistema</p>
-                    <div class="btn-group-vertical w-100">
-                        <a href="{{ url_for('alumnos') }}" class="btn btn-primary">
-                            <i class="bi bi-list-ul me-2"></i>Ver Lista
-                        </a>
-                        <a href="{{ url_for('agregar_alumno') }}" class="btn btn-outline-primary mt-2">
-                            <i class="bi bi-plus-circle me-2"></i>Agregar Nuevo
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <div class="card module-card border-success h-100 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="module-icon bg-success rounded-circle mx-auto mb-3">
-                        <i class="bi bi-collection text-white fs-2"></i>
-                    </div>
-                    <h5 class="card-title text-success mb-2">Gestión de Grupos</h5>
-                    <p class="card-text text-muted mb-3">{{ total_grupos }} grupos académicos activos</p>
-                    <div class="btn-group-vertical w-100">
-                        <a href="{{ url_for('grupos') }}" class="btn btn-success">
-                            <i class="bi bi-list-ul me-2"></i>Ver Grupos
-                        </a>
-                        <a href="{{ url_for('agregar_grupo') }}" class="btn btn-outline-success mt-2">
-                            <i class="bi bi-plus-circle me-2"></i>Crear Grupo
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <div class="card module-card border-warning h-100 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="module-icon bg-warning rounded-circle mx-auto mb-3">
-                        <i class="bi bi-clipboard-check text-white fs-2"></i>
-                    </div>
-                    <h5 class="card-title text-warning mb-2">Sistema de Matrículas</h5>
-                    <p class="card-text text-muted mb-3">{{ total_matriculas }} matrículas procesadas</p>
-                    <div class="btn-group-vertical w-100">
-                        <a href="{{ url_for('matriculas') }}" class="btn btn-warning text-white">
-                            <i class="bi bi-list-ul me-2"></i>Ver Matrículas
-                        </a>
-                        <a href="{{ url_for('matriculas') }}" class="btn btn-outline-warning mt-2">
-                            <i class="bi bi-plus-circle me-2"></i>Nueva Matrícula
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <div class="card module-card border-info h-100 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="module-icon bg-info rounded-circle mx-auto mb-3">
-                        <i class="bi bi-clock text-white fs-2"></i>
-                    </div>
-                    <h5 class="card-title text-info mb-2">Horarios Académicos</h5>
-                    <p class="card-text text-muted mb-3">Configuración completa de horarios por grupo</p>
-                    <a href="{{ url_for('grupos') }}" class="btn btn-info text-white w-100">
-                        <i class="bi bi-calendar-week me-2"></i>Gestionar Horarios
-                    </a>
-                </div>
+            <div class="col-auto">
+                <span class="badge bg-danger fs-6 p-2">
+                    <i class="bi bi-person-badge me-2"></i>{{ total_credenciales }} Credenciales
+                </span>
             </div>
         </div>
     </div>
-
-        <!-- Tarjeta para Pase de Lista
-    <div class="col-xl-3 col-md-6">
-        <div class="card module-card border-purple h-100 shadow-sm">
-            <div class="card-body text-center p-4">
-                <div class="module-icon bg-purple rounded-circle mx-auto mb-3">
-                    <i class="bi bi-clipboard-check text-white fs-2"></i>
-                </div>
-                <h5 class="card-title text-purple mb-2">Pase de Lista</h5>
-                <p class="card-text text-muted mb-3">Registro de asistencia y calificaciones</p>
-                <a href="{{ url_for('pase_lista') }}" class="btn btn-purple w-100">
-                    <i class="bi bi-clipboard-check me-2"></i>Gestionar Listas
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gestión de Usuarios - Ahora arriba del resumen 
-    <div class="row g-4 mb-4">
-        <div class="col-12">
-            <div class="card bg-gradient-users shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h3 class="card-title text-white mb-2">
-                                <i class="bi bi-shield-check me-2"></i>Gestión de Usuarios del Sistema
-                            </h3>
-                            <p class="card-text text-white-50 mb-0">
-                                Administra los accesos, permisos y cuentas de todos los usuarios del sistema educativo
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                                <a href="{{ url_for('admin_usuarios') }}" class="btn btn-light btn-lg">
-                                    <i class="bi bi-gear me-2"></i>Gestionar
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div> -->
 
     <!-- Panel de Estadísticas y Acciones Rápidas -->
     <div class="row g-4">
@@ -273,6 +158,15 @@
                             </div>
                         </a>
 
+                        <!-- NUEVO BOTÓN PARA CREDENCIALES -->
+                        <a href="{{ url_for('credenciales_index') }}" class="btn btn-outline-danger btn-lg text-start py-3">
+                            <i class="bi bi-person-badge me-2"></i>
+                            <div>
+                                <strong>Generar Credenciales</strong>
+                                <small class="d-block text-muted">Desde archivo CSV</small>
+                            </div>
+                        </a>
+
                         <a href="{{ url_for('admin_usuarios') }}" class="btn btn-outline-info btn-lg text-start py-3">
                             <i class="bi bi-gear me-2"></i>
                             <div>
@@ -294,6 +188,7 @@
         </div>
     </div>
 </div>
+
 <style>
 .dashboard-admin {
     padding: 1rem 0;
@@ -413,6 +308,42 @@
 .btn-purple:hover {
     background-color: #5a32a3;
     border-color: #5a32a3;
+    color: white;
+}
+
+/* Estilos para la tarjeta de credenciales */
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.border-danger {
+    border-color: #dc3545 !important;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #bb2d3b;
+    border-color: #bb2d3b;
+    color: white;
+}
+
+.btn-outline-danger {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
     color: white;
 }
 </style>
