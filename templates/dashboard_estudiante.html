@@ -2,6 +2,20 @@
 
 {% block content %}
 <div class="dashboard-estudiante">
+    <!-- Notificación de Felicitación de Cumpleaños -->
+    {% if tiene_felicitacion %}
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-balloon-heart-fill me-3 fs-2"></i>
+            <div>
+                <h5 class="alert-heading mb-1">🎉 ¡Feliz Cumpleaños!</h5>
+                <p class="mb-0">El equipo administrativo te ha enviado una felicitación especial por tu cumpleaños.</p>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
     <!-- Header Principal -->
     <div class="dashboard-header text-center mb-4">
         <h1 class="display-5 fw-bold text-primary mb-2">¡Bienvenido al Sistema EEC!</h1>
@@ -94,6 +108,10 @@
                             <p class="mb-2"><strong>Email:</strong> {{ estudiante.alumno.email }}</p>
                             <p class="mb-2"><strong>Teléfono:</strong> {{ estudiante.alumno.telefono or 'No registrado' }}</p>
                             <p class="mb-0"><strong>Dirección:</strong> {{ estudiante.alumno.direccion or 'No registrada' }}</p>
+                            {% if estudiante.alumno.fecha_nacimiento %}
+                            <hr>
+                            <p class="mb-0"><strong>Fecha Nacimiento:</strong> {{ estudiante.alumno.fecha_nacimiento.strftime('%d/%m/%Y') }}</p>
+                            {% endif %}
                         {% else %}
                             <p class="text-muted">Información no disponible</p>
                         {% endif %}
@@ -143,9 +161,9 @@
         <!-- Horario Detallado -->
         <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title mb-0 text-primary text-white">
-                        <i class="bi bi-clock-history me-2 text-white"></i>Horario de Clases Semanal
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Horario de Clases Semanal
                     </h5>
                 </div>
                 <div class="card-body">
@@ -187,19 +205,19 @@
         <!-- Información Académica Rápida -->
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title mb-0 text-primary text-white">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="card-title mb-0">
                         <i class="bi bi-info-circle me-2"></i>Información Académica
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-3">
                         <!-- Estado de Matrícula -->
-                        <div class="info-item bg-primary bg-opacity-10 p-3 rounded-3">
+                        <div class="info-item bg-primary bg-opacity-10 p-3 rounded-3 border border-primary">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-primary mb-1 text-white">Estado de Matrícula</h6>
-                                    <h4 class="text-primary mb-0 text-white">
+                                    <h6 class="text-primary mb-1">Estado de Matrícula</h6>
+                                    <h4 class="text-primary mb-0">
                                         {% if estudiante and estudiante.matricula_actual %}
                                             {{ estudiante.matricula_actual.estado }}
                                         {% else %}
@@ -212,11 +230,11 @@
                         </div>
 
                         <!-- Año Escolar -->
-                        <div class="info-item bg-success bg-opacity-10 p-3 rounded-3">
+                        <div class="info-item bg-success bg-opacity-10 p-3 rounded-3 border border-success">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-success mb-1 text-white">Año Escolar</h6>
-                                    <h4 class="text-success mb-0 text-white">
+                                    <h6 class="text-success mb-1">Año Escolar</h6>
+                                    <h4 class="text-success mb-0">
                                         {% if estudiante and estudiante.matricula_actual %}
                                             {{ estudiante.matricula_actual.anio_escolar }}
                                         {% else %}
@@ -229,7 +247,7 @@
                         </div>
 
                         <!-- Total Materias -->
-                        <div class="info-item bg-info bg-opacity-10 p-3 rounded-3">
+                        <div class="info-item bg-info bg-opacity-10 p-3 rounded-3 border border-info">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="text-info mb-1">Materias</h6>
@@ -244,6 +262,35 @@
                                 <i class="bi bi-journal-text text-info fs-4"></i>
                             </div>
                         </div>
+
+                        <!-- Cumpleaños -->
+                        {% if estudiante and estudiante.alumno and estudiante.alumno.fecha_nacimiento %}
+                        <div class="info-item bg-pink bg-opacity-10 p-3 rounded-3 border border-pink">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-pink mb-1">Próximo Cumpleaños</h6>
+                                    <h4 class="text-pink mb-0">
+                                        {% set fecha_nac = estudiante.alumno.fecha_nacimiento %}
+                                        {% set hoy = now.date() %}
+                                        {% set cumple_este_anio = fecha_nac.replace(year=hoy.year) %}
+                                        {% if cumple_este_anio < hoy %}
+                                            {% set cumple_este_anio = cumple_este_anio.replace(year=hoy.year + 1) %}
+                                        {% endif %}
+                                        {% set dias_restantes = (cumple_este_anio - hoy).days %}
+                                        
+                                        {% if dias_restantes == 0 %}
+                                            ¡Hoy!
+                                        {% elif dias_restantes == 1 %}
+                                            Mañana
+                                        {% else %}
+                                            {{ dias_restantes }} días
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-balloon-heart text-pink fs-4"></i>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -316,6 +363,36 @@
 
 .card:hover {
     box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+/* Estilo para la notificación de felicitación */
+.alert-success {
+    border-left: 4px solid #198754;
+    border-radius: 10px;
+}
+
+/* Color rosa para cumpleaños */
+.bg-pink {
+    background-color: #e83e8c !important;
+}
+
+.text-pink {
+    color: #e83e8c !important;
+}
+
+.border-pink {
+    border-color: #e83e8c !important;
+}
+
+/* Animación para la notificación */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.alert-success {
+    animation: pulse 2s ease-in-out;
 }
 
 /* Responsive adjustments */

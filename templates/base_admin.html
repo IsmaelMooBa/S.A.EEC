@@ -51,6 +51,18 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'cumpleanos_alumnos' }}" 
+                           href="{{ url_for('cumpleanos_alumnos') }}">
+                           <i class="bi bi-calendar-heart"></i> Cumpleaños
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'credenciales_index' }}" 
+                           href="{{ url_for('credenciales_index') }}">
+                           <i class="bi bi-file-earmark-text"></i> Credenciales
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'admin_usuarios' }}" 
                            href="{{ url_for('admin_usuarios') }}">
                            <i class="bi bi-bar-chart-line"></i> Usuarios
@@ -61,12 +73,6 @@
                            href="{{ url_for('pase_lista') }}">
                            <i class="bi bi-journal-check"></i> Asistencias
                         </a>    
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ 'active' if request.endpoint == 'credenciales_index' }}" 
-                           href="{{ url_for('credenciales_index') }}">
-                           <i class="bi bi-file-earmark-text"></i> Credenciales
-                        </a>
                     </li>
                 </ul>
 

@@ -5,7 +5,9 @@
     <h1 class="display-5 fw-bold text-primary mb-3">
         <i class="bi bi-clipboard-check me-3"></i>Editar Lista de Asistencia
     </h1>
-    <a href="{{ url_for('pase_lista') }}" class="btn btn-secondary">← Volver a Listas</a>
+    <div>
+        <a href="{{ url_for('pase_lista') }}" class="btn btn-secondary">← Volver a Listas</a>
+    </div>
 </div>
 
 <!-- Información de la Lista -->
@@ -36,6 +38,18 @@
                 <strong>Grupo:</strong> {{ lista.grupo_nombre }} - {{ lista.grado }} ({{ lista.turno }})
             </div>
         </div>
+        <div class="col-md-6">
+                <small class="text-muted">
+                    <strong>Lista ID:</strong> {{ lista.id }} | 
+                    <strong>Grupo ID:</strong> {{ lista.grupo_id }} | 
+                    <strong>Total listas en sistema:</strong> {{ total_listas_sistema }}
+                </small>
+            </div>
+            <div class="col-md-6 text-end">
+                <small class="text-muted">
+                    <strong>Última actualización:</strong> {{ now.strftime('%d/%m/%Y %H:%M') }}
+                </small>
+            </div>
     </div>
 </div>
 
@@ -142,27 +156,24 @@
             </div>
         </div>
         <div class="card-footer bg-light">
-            <div class="row">
-                <div class="col-md-3">
+            <div class="row align-items-center">
+                <div class="col-md-4">
                     <strong>Total Alumnos:</strong> {{ alumnos|length }}
                 </div>
-                <div class="col-md-3">
-                    <strong>Asistencia Registrada:</strong> 
-                    <span id="total-asistencia">{{ total_asistencia }}</span>/{{ alumnos|length }}
-                </div>
-                <div class="col-md-3">
-                    <strong>Porcentaje Asistencia:</strong>
-                    <span id="porcentaje-asistencia">
+                <div class="col-md-4 text-center">
+                    <strong>Asistencia:</strong> 
+                    <span id="total-asistencia" class="fw-bold">{{ total_asistencia }}</span>/{{ alumnos|length }}
+                    <span class="text-muted">(</span><span id="porcentaje-asistencia" class="fw-bold">
                         {% if alumnos|length > 0 %}
                             {{ ((total_asistencia / alumnos|length) * 100)|round(1) }}%
                         {% else %}
                             0%
                         {% endif %}
-                    </span>
+                    </span><span class="text-muted">)</span>
                 </div>
-                <div class="col-md-3 text-end">
+                <div class="col-md-4 text-end">
                     <button type="submit" class="btn btn-primary">
-                        💾 Guardar Todos los Cambios
+                        <i class="bi bi-save"></i> Guardar Todos los Cambios
                     </button>
                 </div>
             </div>
@@ -170,44 +181,17 @@
     </div>
 </form>
 
-<!-- Resumen de Validación -->
+<!-- Barra de Progreso y Métricas -->
 <div class="card mt-4">
     <div class="card-header bg-info text-white">
-        <h5 class="mb-0">🔍 Resumen de Asistencia</h5>
+        <h5 class="mb-0">📊 Métricas de Asistencia</h5>
     </div>
     <div class="card-body">
-        <div class="row text-center">
-            <div class="col-md-3">
-                <div class="border rounded p-3 bg-primary bg-opacity-10">
-                    <h3 class="text-white">{{ total_alumnos }}</h3>
-                    <small class="text-white">Total Alumnos</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3 bg-success bg-opacity-10">
-                    <h3 class="text-white" id="resumen-asistencia">{{ total_asistencia }}</h3>
-                    <small class="text-white">Asistieron</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3 bg-warning bg-opacity-10">
-                    <h3 class="text-white" id="resumen-faltas">{{ total_alumnos - total_asistencia }}</h3>
-                    <small class="text-white">Faltaron</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3 bg-info bg-opacity-10">
-                    <h3 class="text-info">{{ total_validados }}</h3>
-                    <small class="text-muted">Validados</small>
-                </div>
-            </div>
-        </div>
-        
         <!-- Barra de progreso de asistencia -->
-        <div class="mt-4">
+        <div class="mb-4">
             <div class="d-flex justify-content-between mb-2">
-                <span>Porcentaje de Asistencia</span>
-                <span id="porcentaje-bar-text">
+                <span class="fw-bold">Porcentaje de Asistencia</span>
+                <span id="porcentaje-bar-text" class="fw-bold">
                     {% if alumnos|length > 0 %}
                         {{ ((total_asistencia / alumnos|length) * 100)|round(1) }}%
                     {% else %}
@@ -215,7 +199,7 @@
                     {% endif %}
                 </span>
             </div>
-            <div class="progress" style="height: 20px;">
+            <div class="progress" style="height: 25px;">
                 <div id="porcentaje-bar" 
                      class="progress-bar {% if (total_asistencia / alumnos|length * 100) >= 80 %}bg-success{% elif (total_asistencia / alumnos|length * 100) >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
                      role="progressbar" 
@@ -223,6 +207,35 @@
                      aria-valuenow="{% if alumnos|length > 0 %}{{ (total_asistencia / alumnos|length * 100) }}{% else %}0{% endif %}" 
                      aria-valuemin="0" 
                      aria-valuemax="100">
+                    <span class="progress-text fw-bold">
+                        {% if alumnos|length > 0 %}
+                            {{ ((total_asistencia / alumnos|length) * 100)|round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Métricas adicionales -->
+        <div class="row text-center">
+            <div class="col-md-4">
+                <div class="border rounded p-3 bg-light">
+                    <h4 class="text-primary mb-1">{{ total_validados }}</h4>
+                    <small class="text-muted">Validaciones Estudiantes</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3 bg-light">
+                    <h4 class="text-success mb-1" id="metricas-asistencia">{{ total_asistencia }}</h4>
+                    <small class="text-muted">Presentes</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3 bg-light">
+                    <h4 class="text-danger mb-1" id="metricas-faltas">{{ total_alumnos - total_asistencia }}</h4>
+                    <small class="text-muted">Ausentes</small>
                 </div>
             </div>
         </div>
@@ -272,6 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-asistencia').textContent = totalAsistencia;
         document.getElementById('resumen-asistencia').textContent = totalAsistencia;
         document.getElementById('resumen-faltas').textContent = totalAlumnos - totalAsistencia;
+        document.getElementById('metricas-asistencia').textContent = totalAsistencia;
+        document.getElementById('metricas-faltas').textContent = totalAlumnos - totalAsistencia;
         document.getElementById('porcentaje-asistencia').textContent = porcentaje.toFixed(1) + '%';
         document.getElementById('porcentaje-bar-text').textContent = porcentaje.toFixed(1) + '%';
         
@@ -279,6 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressBar = document.getElementById('porcentaje-bar');
         progressBar.style.width = porcentaje + '%';
         progressBar.setAttribute('aria-valuenow', porcentaje);
+        progressBar.querySelector('.progress-text').textContent = porcentaje.toFixed(1) + '%';
         
         // Cambiar color de la barra según el porcentaje
         if (porcentaje >= 80) {
@@ -298,6 +314,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (valor < 0) {
                 this.value = 0;
             } else if (valor > 100) {
+                this.value = 100;
+            }
+        });
+        
+        input.addEventListener('input', function() {
+            const valor = parseInt(this.value);
+            if (valor > 100) {
                 this.value = 100;
             }
         });
@@ -336,24 +359,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     {% endif %}
 });
-</script>
 
-<!-- Botones rápidos para marcar/desmarcar todos
-<div class="card mt-4">
-    <div class="card-header bg-secondary text-white">
-        <h6 class="mb-0">⚡ Acciones Rápidas</h6>
-    </div>
-    <div class="card-body">
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-success" onclick="toggleAllAsistencias(true)">
-                ✅ Marcar Todos como Asistieron
-            </button>
-            <button type="button" class="btn btn-outline-danger" onclick="toggleAllAsistencias(false)">
-                ❌ Marcar Todos como No Asistieron
-            </button>
-        </div>
-    </div>
-</div>  -->
+// Confirmación antes de salir si hay cambios sin guardar
+window.addEventListener('beforeunload', function (e) {
+    // Aquí podrías agregar lógica para detectar cambios sin guardar
+    // Por ahora es un placeholder
+});
+</script>
 
 <style>
 .btn-check:checked + .btn-outline-success {
@@ -386,16 +398,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .progress {
     border-radius: 10px;
+    background-color: #e9ecef;
 }
 
 .progress-bar {
     border-radius: 10px;
     transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
 .input-group-text {
     background-color: #e9ecef;
     border: 1px solid #ced4da;
+}
+
+.card .card-body .border.rounded {
+    transition: all 0.3s ease;
+}
+
+.card .card-body .border.rounded:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.badge {
+    font-size: 0.8em;
 }
 </style>
 {% endblock %}

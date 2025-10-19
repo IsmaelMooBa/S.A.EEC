@@ -1,0 +1,317 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-5 fw-bold text-primary mb-3">
+        <i class="bi bi-calendar-heart me-3"></i>Calendario de Cumpleaños
+    </h1>
+</div>
+
+<!-- Sistema de Filtros por Mes -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">🎂 Filtrar por Mes de Cumpleaños</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('cumpleanos_alumnos') }}" class="row g-3">
+            <!-- Filtro por mes -->
+            <div class="col-md-6">
+                <label for="mes" class="form-label">Mes</label>
+                <select class="form-select" id="mes" name="mes">
+                    <option value="">Todos los meses</option>
+                    {% for i in range(1, 13) %}
+                    <option value="{{ i }}" {% if request.args.get('mes')|int == i %}selected{% endif %}>
+                        {{ ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][i-1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Filtro por orden -->
+            <div class="col-md-4">
+                <label for="orden" class="form-label">Ordenar por</label>
+                <select class="form-select" id="orden" name="orden">
+                    <option value="dia" {% if request.args.get('orden') == 'dia' %}selected{% endif %}>
+                        Día del mes
+                    </option>
+                    <option value="nombre" {% if request.args.get('orden') == 'nombre' %}selected{% endif %}>
+                        Nombre A-Z
+                    </option>
+                    <option value="edad" {% if request.args.get('orden') == 'edad' %}selected{% endif %}>
+                        Edad
+                    </option>
+                </select>
+            </div>
+            
+            <!-- Botones -->
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="d-grid gap-2 w-100">
+                    <button type="submit" class="btn btn-primary">🔍 Filtrar</button>
+                    <a href="{{ url_for('cumpleanos_alumnos') }}" class="btn btn-outline-secondary">🔄 Limpiar</a>
+                </div>
+            </div>
+        </form>
+        
+        <!-- Mostrar filtros activos -->
+        {% if request.args.get('mes') %}
+        <div class="mt-3">
+            <small class="text-muted">
+                Filtros activos: 
+                {% if request.args.get('mes') %}
+                <span class="badge bg-info">
+                    Mes: {{ ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][request.args.get('mes')|int - 1] }}
+                </span>
+                {% endif %}
+                {% if request.args.get('orden') %}
+                <span class="badge bg-info">Orden: {{ request.args.get('orden') }}</span>
+                {% endif %}
+            </small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Información de resultados -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted mb-0">
+        Mostrando <strong>{{ alumnos|length }}</strong> alumno(s) con cumpleaños
+        {% if request.args.get('mes') %}
+        en <strong>{{ ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][request.args.get('mes')|int - 1] }}</strong>
+        {% endif %}
+    </p>
+    {% if alumnos|length > 0 %}
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
+                data-bs-toggle="dropdown" aria-expanded="false">
+            📊 Acciones
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" onclick="exportarTabla()">📥 Exportar a CSV</a></li>
+            <li><a class="dropdown-item" href="#" onclick="imprimirTabla()">🖨️ Imprimir</a></li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+{% if alumnos %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover" id="tabla-cumpleanos">
+        <thead class="table-dark">
+            <tr>
+                <th width="80">Día</th>
+                <th>Alumno</th>
+                <th width="120">Fecha Nacimiento</th>
+                <th width="100">Edad</th>
+                <th width="100">Próximo Cumpleaños</th>
+                <th width="100">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alumno in alumnos %}
+            <tr class="{% if alumno.cumple_hoy %}table-success{% elif alumno.cumple_proximo %}table-warning{% endif %}">
+                <td>
+                    <div class="text-center">
+                        <strong class="fs-5">{{ alumno.dia_mes }}</strong>
+                        <br>
+                        <small class="text-muted">{{ alumno.nombre_mes[:3] }}</small>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="avatar-cumpleanos bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                             style="width: 40px; height: 40px; font-size: 1.2rem;">
+                            {{ alumno.iniciales }}
+                        </div>
+                        <div>
+                            <strong>{{ alumno.nombre }} {{ alumno.apellido }}</strong>
+                            {% if alumno.cumple_hoy %}
+                            <span class="badge bg-success ms-2">🎉 Hoy</span>
+                            {% elif alumno.cumple_proximo %}
+                            <span class="badge bg-warning ms-2">📅 Próximo</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    {{ alumno.fecha_nacimiento.strftime('%d/%m/%Y') if alumno.fecha_nacimiento else 'N/A' }}
+                </td>
+                <td>
+                    {% if alumno.edad %}
+                    <span class="badge bg-info">{{ alumno.edad }} años</span>
+                    {% else %}
+                    <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if alumno.dias_restantes == 0 %}
+                    <span class="badge bg-success">¡Hoy!</span>
+                    {% elif alumno.dias_restantes == 1 %}
+                    <span class="badge bg-warning">Mañana</span>
+                    {% elif alumno.dias_restantes <= 7 %}
+                    <span class="badge bg-info">{{ alumno.dias_restantes }} días</span>
+                    {% else %}
+                    <small class="text-muted">{{ alumno.dias_restantes }} días</small>
+                    {% endif %}
+                </td>
+                <td class="table-actions">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('editar_alumno', id=alumno.id) }}" 
+                           class="btn btn-outline-primary" title="Ver alumno">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <button class="btn btn-outline-success" 
+                                onclick="felicitarAlumno({{ alumno.id }}, '{{ alumno.nombre }}')"
+                                title="Enviar felicitación">
+                            <i class="bi bi-balloon-heart"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info text-center">
+    <h4>🎂 No hay cumpleaños para mostrar</h4>
+    <p>
+        {% if request.args.get('mes') %}
+        No hay alumnos que cumplan años en {{ ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][request.args.get('mes')|int - 1] }}.
+        {% else %}
+        No hay alumnos con fecha de nacimiento registrada en el sistema.
+        {% endif %}
+    </p>
+    <a href="{{ url_for('alumnos') }}" class="btn btn-primary">Gestionar Alumnos</a>
+</div>
+{% endif %}
+
+<!-- Scripts para funcionalidades adicionales -->
+<script>
+function exportarTabla() {
+    let csv = [];
+    let rows = document.querySelectorAll("#tabla-cumpleanos tr");
+    
+    for (let i = 0; i < rows.length; i++) {
+        let row = [], cols = rows[i].querySelectorAll("td, th");
+        
+        for (let j = 0; j < cols.length - 1; j++) { // Excluir columna de acciones
+            let text = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/(\s\s)/gm, " ");
+            row.push('"' + text + '"');
+        }
+        
+        csv.push(row.join(","));        
+    }
+
+    // Descargar archivo
+    let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+    let downloadLink = document.createElement("a");
+    downloadLink.download = "cumpleanos_alumnos_" + new Date().toISOString().split('T')[0] + ".csv";
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
+
+function imprimirTabla() {
+    let ventana = window.open('', '_blank');
+    ventana.document.write(`
+        <html>
+            <head>
+                <title>Calendario de Cumpleaños - Alumnos</title>
+                <style>
+                    body { font-family: Arial, sans-serif; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    th { background-color: #f2f2f2; }
+                    .table-success { background-color: #d1e7dd; }
+                    .table-warning { background-color: #fff3cd; }
+                    .badge { padding: 4px 8px; border-radius: 4px; color: white; }
+                    .bg-success { background-color: #28a745; }
+                    .bg-warning { background-color: #ffc107; color: black; }
+                    .bg-info { background-color: #17a2b8; }
+                    @media print { .no-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <h2>Calendario de Cumpleaños - Alumnos</h2>
+                <p>Generado el: ${new Date().toLocaleDateString()}</p>
+                ${document.getElementById('tabla-cumpleanos').outerHTML}
+            </body>
+        </html>
+    `);
+    ventana.document.close();
+    ventana.print();
+}
+
+function felicitarAlumno(alumnoId, nombre) {
+    if (confirm(`¿Enviar felicitación de cumpleaños a ${nombre}?`)) {
+        // Aquí podrías implementar el envío de email o notificación
+        alert(`🎉 ¡Felicitación enviada a ${nombre}!`);
+        
+        // Simulación de envío (reemplazar con llamada AJAX real)
+        fetch('/felicitar_cumpleanos/' + alumnoId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Felicitación enviada correctamente');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+}
+
+// Resaltar filas de cumpleaños hoy
+document.addEventListener('DOMContentLoaded', function() {
+    const hoyRows = document.querySelectorAll('.table-success');
+    hoyRows.forEach(row => {
+        row.style.animation = 'pulse 2s infinite';
+    });
+});
+</script>
+
+<style>
+.table-actions {
+    white-space: nowrap;
+    width: 120px;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.badge {
+    margin-right: 5px;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.avatar-cumpleanos {
+    font-weight: bold;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.table-success {
+    border-left: 4px solid #198754;
+}
+
+.table-warning {
+    border-left: 4px solid #ffc107;
+}
+
+/* Estilos para las tarjetas de estadísticas */
+.card .card-body i {
+    opacity: 0.7;
+}
+</style>
+{% endblock %}

@@ -23,18 +23,23 @@
                 </span>
             </div>
             <div class="col-auto">
-                <span class="badge bg-info fs-6 p-2">
-                    <i class="bi bi-clock me-2"></i>{{ total_horarios }} Horarios
-                </span>
-            </div>
-            <div class="col-auto">
-                <span class="badge bg-purple fs-6 p-2">
-                    <i class="bi bi-clipboard-check me-2"></i>{{ total_asistencias }} Asistencias
+                <span class="badge bg-pink fs-6 p-2">
+                    <i class="bi bi-calendar-heart me-2"></i>{{ total_cumpleanos or 0 }} Cumpleaños Hoy
                 </span>
             </div>
             <div class="col-auto">
                 <span class="badge bg-danger fs-6 p-2">
                     <i class="bi bi-person-badge me-2"></i>{{ total_credenciales }} Credenciales
+                </span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-info fs-6 p-2">
+                    <i class="bi bi-person-check me-2"></i>{{ total_usuarios or 0 }} Usuarios
+                </span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-purple fs-6 p-2">
+                    <i class="bi bi-clipboard-data me-2"></i>{{ total_listas or 0 }} Listas
                 </span>
             </div>
         </div>
@@ -45,51 +50,12 @@
         <!-- Panel de Estadísticas -->
         <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title text-white mb-2">
-                        <i class="bi bi-graph-up me-2"></i>Resumen del Sistema
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-graph-up me-2 text-white"></i>Resumen del Sistema
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="stat-card bg-primary bg-opacity-10 p-3 rounded-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="card-title text-white mb-2">Alumnos Registrados</h6>
-                                        <h3 class="text-white mb-0">{{ total_alumnos }}</h3>
-                                    </div>
-                                    <i class="bi bi-people-fill text-white fs-4"></i>
-                                </div>
-                                <small class="text-white">Total en el sistema</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card bg-success bg-opacity-10 p-3 rounded-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-white mb-1">Grupos Activos</h6>
-                                        <h3 class="text-white mb-0">{{ total_grupos }}</h3>
-                                    </div>
-                                    <i class="bi bi-collection text-white fs-4"></i>
-                                </div>
-                                <small class="text-white">En funcionamiento</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card bg-info bg-opacity-10 p-3 rounded-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-info mb-1">Matrículas Activas</h6>
-                                        <h3 class="text-info mb-0">{{ total_matriculas }}</h3>
-                                    </div>
-                                    <i class="bi bi-clipboard-check text-info fs-4"></i>
-                                </div>
-                                <small class="text-muted">Procesadas este año</small>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Gráfico de Barras Simple -->
                     <div class="mt-4">
                         <h6 class="text-muted mb-3">Distribución General</h6>
@@ -114,9 +80,16 @@
                                 <span>Matrículas</span>
                                 <span>{{ total_matriculas }}</span>
                             </div>
-
                             <div class="progress mb-3" style="height: 8px;">
                                 <div class="progress-bar bg-warning" style="width: {% if total_matriculas > 0 %}80{% else %}0{% endif %}%"></div>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Usuarios</span>
+                                <span>{{ total_usuarios or 0 }}</span>
+                            </div>
+                            <div class="progress mb-3" style="height: 8px;">
+                                <div class="progress-bar bg-info" style="width: {% if total_usuarios and total_usuarios > 0 %}{{ (total_usuarios / total_matriculas * 100) if total_matriculas > 0 else 0 }}{% else %}0{% endif %}%"></div>
                             </div>
                         </div>
                     </div>
@@ -127,9 +100,9 @@
         <!-- Panel de Acciones Rápidas -->
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3">
+                <div class="card-header bg-success text-white py-3">
                     <h5 class="card-title mb-0 text-white">
-                        <i class="bi bi-lightning me-2"></i>Acciones Rápidas
+                        <i class="bi bi-lightning me-2 text-white"></i>Acciones Rápidas
                     </h5>
                 </div>
                 <div class="card-body">
@@ -158,7 +131,15 @@
                             </div>
                         </a>
 
-                        <!-- NUEVO BOTÓN PARA CREDENCIALES -->
+                        <!-- NUEVO BOTÓN: CALENDARIO DE CUMPLEAÑOS -->
+                        <a href="{{ url_for('cumpleanos_alumnos') }}" class="btn btn-outline-pink btn-lg text-start py-3">
+                            <i class="bi bi-calendar-heart me-2"></i>
+                            <div>
+                                <strong>Calendario Cumpleaños</strong>
+                                <small class="d-block text-muted">Ver fechas de cumpleaños</small>
+                            </div>
+                        </a>
+
                         <a href="{{ url_for('credenciales_index') }}" class="btn btn-outline-danger btn-lg text-start py-3">
                             <i class="bi bi-person-badge me-2"></i>
                             <div>
@@ -178,7 +159,7 @@
                         <a href="{{ url_for('pase_lista') }}" class="btn btn-outline-purple btn-lg text-start py-3">
                             <i class="bi bi-clipboard-check me-2"></i>
                             <div>
-                                <strong>Gestionar Pase de Lista</strong>
+                                <strong>Pase de Lista</strong>
                                 <small class="d-block text-muted">Registrar asistencias</small>
                             </div>
                         </a>
@@ -253,40 +234,7 @@
     transform: scale(1.05);
 }
 
-/* Estilos específicos para la tarjeta de Gestión de Usuarios */
-.bg-gradient-users {
-    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%) !important;
-    border: none;
-    border-radius: 15px;
-}
-
-.user-stats .bg-white.bg-opacity-20 {
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-.bg-gradient-users .btn-light {
-    background: rgba(255,255,255,0.9);
-    border: none;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.bg-gradient-users .btn-light:hover {
-    background: white;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-/* Efectos hover para todas las tarjetas */
-.card {
-    transition: all 0.3s ease;
-}
-
-.card:hover {
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-}
-
+/* Colores personalizados */
 .bg-purple {
     background-color: #6f42c1 !important;
 }
@@ -299,52 +247,81 @@
     border-color: #6f42c1 !important;
 }
 
-.btn-purple {
+.btn-outline-purple {
+    color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.btn-outline-purple:hover {
     background-color: #6f42c1;
     border-color: #6f42c1;
     color: white;
 }
 
-.btn-purple:hover {
-    background-color: #5a32a3;
-    border-color: #5a32a3;
+/* NUEVO COLOR PARA BOTÓN DE CUMPLEAÑOS */
+.bg-pink {
+    background-color: #e83e8c !important;
+}
+
+.text-pink {
+    color: #e83e8c !important;
+}
+
+.border-pink {
+    border-color: #e83e8c !important;
+}
+
+.btn-outline-pink {
+    color: #e83e8c;
+    border-color: #e83e8c;
+}
+
+.btn-outline-pink:hover {
+    background-color: #e83e8c;
+    border-color: #e83e8c;
     color: white;
 }
 
-/* Estilos para la tarjeta de credenciales */
-.bg-danger {
-    background-color: #dc3545 !important;
+/* Efectos hover para todas las tarjetas */
+.card {
+    transition: all 0.3s ease;
 }
 
-.text-danger {
-    color: #dc3545 !important;
+.card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
 }
 
-.border-danger {
-    border-color: #dc3545 !important;
+/* Mejoras visuales para las tarjetas de estadísticas */
+.stat-card {
+    border-left: 4px solid !important;
 }
 
-.btn-danger {
-    background-color: #dc3545;
-    border-color: #dc3545;
-    color: white;
+.bg-primary.bg-opacity-10 {
+    border-left-color: #0d6efd !important;
 }
 
-.btn-danger:hover {
-    background-color: #bb2d3b;
-    border-color: #bb2d3b;
-    color: white;
+.bg-success.bg-opacity-10 {
+    border-left-color: #198754 !important;
 }
 
-.btn-outline-danger {
-    color: #dc3545;
-    border-color: #dc3545;
+.bg-warning.bg-opacity-10 {
+    border-left-color: #ffc107 !important;
 }
 
-.btn-outline-danger:hover {
-    background-color: #dc3545;
-    border-color: #dc3545;
-    color: white;
+.bg-info.bg-opacity-10 {
+    border-left-color: #0dcaf0 !important;
+}
+
+.bg-purple.bg-opacity-10 {
+    border-left-color: #6f42c1 !important;
+}
+
+.bg-danger.bg-opacity-10 {
+    border-left-color: #dc3545 !important;
+}
+
+.bg-pink.bg-opacity-10 {
+    border-left-color: #e83e8c !important;
 }
 </style>
 {% endblock %}

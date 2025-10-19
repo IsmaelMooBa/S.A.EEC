@@ -311,13 +311,15 @@ def editar_lista_asistencia(lista_id):
             flash('Lista de asistencia no encontrada', 'error')
             return redirect(url_for('pase_lista'))
         
-        print(f"🔍 Lista encontrada: {lista}")  # Debug
+        # Obtener total de listas en el sistema
+        total_listas = db.fetch_one("SELECT COUNT(*) as total FROM listas_asistencia")
+        total_listas_sistema = total_listas['total'] if total_listas else 0
         
-        # Obtener alumnos del grupo con su asistencia y calificaciones - CONSULTA CORREGIDA
+        # Obtener alumnos del grupo con su asistencia y calificaciones
         alumnos = db.fetch_all("""
             SELECT 
                 a.id, 
-                m.codigo_matricula,  -- CORREGIDO: usar m.codigo_matricula en lugar de a.matricula
+                m.codigo_matricula,
                 a.nombre, 
                 a.apellido, 
                 COALESCE(aa.asistio, 0) as asistio,
@@ -329,8 +331,6 @@ def editar_lista_asistencia(lista_id):
             ORDER BY a.nombre, a.apellido
         """, (lista['grupo_id'], lista_id)) or []
         
-        print(f"🔍 Alumnos encontrados: {len(alumnos)}")  # Debug
-        
         # Calcular totales
         total_asistencia = sum(1 for alumno in alumnos if alumno['asistio'])
         total_validados = sum(1 for alumno in alumnos if alumno['validado'])
@@ -340,11 +340,13 @@ def editar_lista_asistencia(lista_id):
                              alumnos=alumnos,
                              total_alumnos=len(alumnos),
                              total_asistencia=total_asistencia,
-                             total_validados=total_validados)
+                             total_validados=total_validados,
+                             total_listas_sistema=total_listas_sistema,
+                             now=datetime.now())
     except Exception as e:
         flash(f'Error cargando lista de asistencia: {e}', 'error')
         import traceback
-        traceback.print_exc()  # Para ver el error completo
+        traceback.print_exc()
         return redirect(url_for('pase_lista'))
 
 @app.route('/ver_lista_asistencia/<int:lista_id>')
@@ -703,28 +705,74 @@ def dashboard():
         total_grupos = len(Grupo.obtener_todos() or [])
         total_matriculas = len(Matricula.obtener_todas() or [])
         
+        # Obtener total de usuarios
+        db = Database()
+        total_usuarios_result = db.fetch_one("SELECT COUNT(*) as total FROM usuarios")
+        total_usuarios = total_usuarios_result['total'] if total_usuarios_result else 0
+        
+        # Obtener total de listas de asistencia
+        total_listas_result = db.fetch_one("SELECT COUNT(*) as total FROM listas_asistencia")
+        total_listas = total_listas_result['total'] if total_listas_result else 0
+        
         # Dashboard diferente según el rol
         if usuario['rol'] == 'admin':
             return render_template('dashboard_admin.html', 
                                  usuario=usuario,
                                  total_alumnos=total_alumnos,
                                  total_grupos=total_grupos,
-                                 total_matriculas=total_matriculas)
+                                 total_matriculas=total_matriculas,
+                                 total_usuarios=total_usuarios,
+                                 total_listas=total_listas)
         else:
             # Obtener información completa del estudiante
             estudiante_info = obtener_info_estudiante(usuario['matricula_id'])
+            
+            # Verificar si hay felicitaciones pendientes (con manejo de errores)
+            tiene_felicitacion = False
+            if estudiante_info and estudiante_info.get('alumno'):
+                try:
+                    # Primero verificar si la tabla existe
+                    tabla_existe = db.fetch_one("""
+                        SELECT TABLE_NAME 
+                        FROM INFORMATION_SCHEMA.TABLES 
+                        WHERE TABLE_NAME = 'felicitaciones_cumpleanos'
+                    """)
+                    
+                    if tabla_existe:
+                        felicitacion = db.fetch_one("""
+                            SELECT * FROM felicitaciones_cumpleanos 
+                            WHERE alumno_id = %s AND fecha_envio >= CURDATE() - INTERVAL 7 DAY
+                            ORDER BY fecha_envio DESC LIMIT 1
+                        """, (estudiante_info['alumno']['id'],))
+                        tiene_felicitacion = felicitacion is not None
+                except Exception as e:
+                    print(f"⚠️ Error verificando felicitaciones: {e}")
+                    # Si hay error, continuar sin felicitaciones
+            
             return render_template('dashboard_estudiante.html', 
                                  usuario=usuario,
                                  estudiante=estudiante_info,
-                                 Matricula=Matricula)
+                                 Matricula=Matricula,
+                                 tiene_felicitacion=tiene_felicitacion,
+                                 now=datetime.now())
     except Exception as e:
         print(f"❌ Error en dashboard: {e}")
         flash('Error cargando el dashboard', 'error')
-        return render_template('dashboard_admin.html' if usuario['rol'] == 'admin' else 'dashboard_estudiante.html', 
-                             usuario=usuario,
-                             total_alumnos=0,
-                             total_grupos=0,
-                             total_matriculas=0)
+        # Renderizar según el rol con valores por defecto
+        if usuario['rol'] == 'admin':
+            return render_template('dashboard_admin.html', 
+                                 usuario=usuario,
+                                 total_alumnos=0,
+                                 total_grupos=0,
+                                 total_matriculas=0,
+                                 total_usuarios=0,
+                                 total_listas=0)
+        else:
+            return render_template('dashboard_estudiante.html', 
+                                 usuario=usuario,
+                                 estudiante=None,
+                                 tiene_felicitacion=False,
+                                 now=datetime.now())
 
 def obtener_info_estudiante(matricula_id):
     """Obtener información completa del estudiante basado en la matrícula"""
@@ -976,6 +1024,94 @@ def eliminar_grupo(id):
         flash(f'Error: {e}', 'error')
     
     return redirect(url_for('grupos'))
+@app.route('/cumpleanos')
+def cumpleanos_alumnos():
+    """Calendario de cumpleaños de alumnos"""
+    try:
+        # Obtener parámetros de filtro
+        mes = request.args.get('mes', type=int)
+        orden = request.args.get('orden', 'dia')
+        
+        # Obtener todos los alumnos con fecha de nacimiento
+        db = Database()
+        query = "SELECT * FROM alumnos WHERE fecha_nacimiento IS NOT NULL"
+        params = []
+        
+        if mes:
+            query += " AND MONTH(fecha_nacimiento) = %s"
+            params.append(mes)
+        
+        # Ordenar
+        if orden == 'dia':
+            query += " ORDER BY DAY(fecha_nacimiento), MONTH(fecha_nacimiento)"
+        elif orden == 'nombre':
+            query += " ORDER BY nombre, apellido"
+        elif orden == 'edad':
+            query += " ORDER BY fecha_nacimiento DESC"
+        
+        alumnos_db = db.fetch_all(query, params) or []
+        
+        # Procesar datos para el template
+        alumnos = []
+        hoy = datetime.now().date()
+        cumpleanos_hoy = 0
+        cumpleanos_este_mes = 0
+        cumpleanos_proxima_semana = 0
+        
+        for alumno in alumnos_db:
+            if alumno['fecha_nacimiento']:
+                fecha_nac = alumno['fecha_nacimiento']
+                # Calcular edad
+                edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
+                
+                # Calcular próximo cumpleaños
+                cumple_este_anio = fecha_nac.replace(year=hoy.year)
+                if cumple_este_anio < hoy:
+                    cumple_este_anio = cumple_este_anio.replace(year=hoy.year + 1)
+                
+                dias_restantes = (cumple_este_anio - hoy).days
+                
+                # Estadísticas
+                if fecha_nac.month == hoy.month:
+                    cumpleanos_este_mes += 1
+                    if fecha_nac.day == hoy.day:
+                        cumpleanos_hoy += 1
+                
+                if 0 <= dias_restantes <= 7:
+                    cumpleanos_proxima_semana += 1
+                
+                alumno_data = {
+                    'id': alumno['id'],
+                    'nombre': alumno['nombre'],
+                    'apellido': alumno['apellido'],
+                    'fecha_nacimiento': fecha_nac,
+                    'edad': edad,
+                    'dia_mes': fecha_nac.day,
+                    'nombre_mes': ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][fecha_nac.month - 1],
+                    'iniciales': f"{alumno['nombre'][0]}{alumno['apellido'][0]}",
+                    'dias_restantes': dias_restantes,
+                    'cumple_hoy': fecha_nac.month == hoy.month and fecha_nac.day == hoy.day,
+                    'cumple_proximo': dias_restantes <= 7 and dias_restantes > 0
+                }
+                alumnos.append(alumno_data)
+        
+        total_alumnos = len(Alumno.obtener_todos() or [])
+        
+        return render_template('cumpleanos_alumnos.html',
+                             alumnos=alumnos,
+                             total_alumnos=total_alumnos,
+                             cumpleanos_hoy=cumpleanos_hoy,
+                             cumpleanos_este_mes=cumpleanos_este_mes,
+                             cumpleanos_proxima_semana=cumpleanos_proxima_semana)
+        
+    except Exception as e:
+        flash(f'Error cargando calendario de cumpleaños: {e}', 'error')
+        return render_template('cumpleanos_alumnos.html',
+                             alumnos=[],
+                             total_alumnos=0,
+                             cumpleanos_hoy=0,
+                             cumpleanos_este_mes=0,
+                             cumpleanos_proxima_semana=0)
 
 # ===== RUTAS PARA GESTIÓN DE ALUMNOS EN GRUPOS =====
 
@@ -1713,6 +1849,10 @@ def admin_usuarios():
             ORDER BY u.username
         """) or []
         
+        # Obtener total de listas en el sistema
+        total_listas = db.fetch_one("SELECT COUNT(*) as total FROM listas_asistencia")
+        total_listas_sistema = total_listas['total'] if total_listas else 0
+        
         # Separar matrículas con y sin usuario
         matriculas_con_usuario = []
         matriculas_sin_usuario = []
@@ -1720,14 +1860,39 @@ def admin_usuarios():
         for matricula in matriculas:
             tiene_usuario = any(usuario.get('matricula_id') == matricula['id'] for usuario in usuarios)
             if tiene_usuario:
+                # Obtener información adicional del alumno para las matrículas con usuario
+                alumno_info = db.fetch_one("""
+                    SELECT a.nombre as alumno_nombre, a.apellido as alumno_apellido, 
+                           g.nombre as grupo_nombre
+                    FROM alumnos a 
+                    LEFT JOIN grupos g ON matricula.grupo_id = g.id
+                    WHERE a.id = %s
+                """, (matricula['alumno_id'],))
+                if alumno_info:
+                    matricula.update(alumno_info)
                 matriculas_con_usuario.append(matricula)
             else:
+                # Obtener información adicional del alumno para las matrículas sin usuario
+                alumno_info = db.fetch_one("""
+                    SELECT a.nombre as alumno_nombre, a.apellido as alumno_apellido,
+                           g.nombre as grupo_nombre
+                    FROM alumnos a 
+                    LEFT JOIN matriculas m ON m.alumno_id = a.id
+                    LEFT JOIN grupos g ON m.grupo_id = g.id
+                    WHERE m.id = %s
+                """, (matricula['id'],))
+                if alumno_info:
+                    matricula.update(alumno_info)
                 matriculas_sin_usuario.append(matricula)
+        
+        total_usuarios = len(usuarios)
         
         return render_template('admin_usuarios.html',
                              matriculas_con_usuario=matriculas_con_usuario,
                              matriculas_sin_usuario=matriculas_sin_usuario,
-                             usuarios=usuarios)
+                             usuarios=usuarios,
+                             total_usuarios=total_usuarios,
+                             total_listas_sistema=total_listas_sistema)
         
     except Exception as e:
         flash(f'Error cargando panel de usuarios: {e}', 'error')
