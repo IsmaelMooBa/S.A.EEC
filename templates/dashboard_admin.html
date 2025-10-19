@@ -56,6 +56,43 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    <!-- Próximo Cumpleaños -->
+                    {% if proximo_cumpleanos %}
+                    <div class="card bg-pink bg-opacity-10 border-pink mb-4">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-2 text-center">
+                                    <i class="bi bi-balloon-heart text-pink display-4"></i>
+                                </div>
+                                <div class="col-md-8 text-white">
+                                    <h6 class="text-white mb-1">🎉 Próximo Cumpleaños</h6>
+                                    <h5 class="text-white mb-1">{{ proximo_cumpleanos.nombre }} {{ proximo_cumpleanos.apellido }}</h5>
+                                    <p class="mb-0 text-white text-white">
+                                        {% if proximo_cumpleanos.dias_restantes == 0 %}
+                                            <strong class="text-white">¡Cumple años hoy!</strong>
+                                        {% elif proximo_cumpleanos.dias_restantes == 1 %}
+                                            <strong class="text-white">Mañana - {{ proximo_cumpleanos.fecha_nacimiento.strftime('%d de %B') }}</strong>
+                                        {% else %}
+                                            En <strong class="text-white">{{ proximo_cumpleanos.dias_restantes }} días</strong> - {{ proximo_cumpleanos.fecha_nacimiento.strftime('%d de %B') }}
+                                        {% endif %}
+                                        {% if proximo_cumpleanos.grupo %}
+                                            • Grupo: {{ proximo_cumpleanos.grupo }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    {% if proximo_cumpleanos.dias_restantes <= 7 %}
+                                    <a href="{{ url_for('cumpleanos_alumnos') }}?mes={{ proximo_cumpleanos.fecha_nacimiento.month }}" 
+                                       class="btn btn-pink btn-sm">
+                                        <i class="bi bi-gift"></i> Felicitar
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Gráfico de Barras Simple -->
                     <div class="mt-4">
                         <h6 class="text-muted mb-3">Distribución General</h6>
@@ -131,7 +168,7 @@
                             </div>
                         </a>
 
-                        <!-- NUEVO BOTÓN: CALENDARIO DE CUMPLEAÑOS -->
+                        <!-- BOTÓN: CALENDARIO DE CUMPLEAÑOS -->
                         <a href="{{ url_for('cumpleanos_alumnos') }}" class="btn btn-outline-pink btn-lg text-start py-3">
                             <i class="bi bi-calendar-heart me-2"></i>
                             <div>
@@ -258,7 +295,7 @@
     color: white;
 }
 
-/* NUEVO COLOR PARA BOTÓN DE CUMPLEAÑOS */
+/* COLOR PARA CUMPLEAÑOS */
 .bg-pink {
     background-color: #e83e8c !important;
 }
@@ -279,6 +316,18 @@
 .btn-outline-pink:hover {
     background-color: #e83e8c;
     border-color: #e83e8c;
+    color: white;
+}
+
+.btn-pink {
+    background-color: #e83e8c;
+    border-color: #e83e8c;
+    color: white;
+}
+
+.btn-pink:hover {
+    background-color: #d91a7a;
+    border-color: #d91a7a;
     color: white;
 }
 
@@ -322,6 +371,17 @@
 
 .bg-pink.bg-opacity-10 {
     border-left-color: #e83e8c !important;
+}
+
+/* Animación para el próximo cumpleaños */
+@keyframes pulse-gentle {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.01); }
+    100% { transform: scale(1); }
+}
+
+.bg-pink.bg-opacity-10 {
+    animation: pulse-gentle 3s ease-in-out infinite;
 }
 </style>
 {% endblock %}

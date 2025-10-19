@@ -714,6 +714,82 @@ def dashboard():
         total_listas_result = db.fetch_one("SELECT COUNT(*) as total FROM listas_asistencia")
         total_listas = total_listas_result['total'] if total_listas_result else 0
         
+        # Obtener información de cumpleaños
+        hoy = datetime.now().date()
+        
+        # Cumpleaños hoy
+        cumpleanos_hoy = db.fetch_one("""
+            SELECT COUNT(*) as total FROM alumnos 
+            WHERE fecha_nacimiento IS NOT NULL 
+            AND MONTH(fecha_nacimiento) = %s AND DAY(fecha_nacimiento) = %s
+        """, (hoy.month, hoy.day))
+        total_cumpleanos_hoy = cumpleanos_hoy['total'] if cumpleanos_hoy else 0
+        
+        # Cumpleaños esta semana
+        cumpleanos_semana = db.fetch_one("""
+            SELECT COUNT(*) as total FROM alumnos 
+            WHERE fecha_nacimiento IS NOT NULL 
+            AND (
+                (MONTH(fecha_nacimiento) = %s AND DAY(fecha_nacimiento) BETWEEN %s AND %s) OR
+                (MONTH(fecha_nacimiento) = %s AND DAY(fecha_nacimiento) BETWEEN 1 AND %s)
+            )
+        """, (
+            hoy.month, hoy.day, min(hoy.day + 6, 31),
+            hoy.month % 12 + 1, (hoy.day + 6) % 31
+        ))
+        total_cumpleanos_semana = cumpleanos_semana['total'] if cumpleanos_semana else 0
+        
+        # Cumpleaños este mes
+        cumpleanos_mes = db.fetch_one("""
+            SELECT COUNT(*) as total FROM alumnos 
+            WHERE fecha_nacimiento IS NOT NULL 
+            AND MONTH(fecha_nacimiento) = %s
+        """, (hoy.month,))
+        total_cumpleanos_mes = cumpleanos_mes['total'] if cumpleanos_mes else 0
+        
+        # Próximo cumpleaños
+        proximo_cumpleanos = db.fetch_one("""
+            SELECT a.id, a.nombre, a.apellido, a.fecha_nacimiento, g.nombre as grupo_nombre
+            FROM alumnos a
+            LEFT JOIN matriculas m ON m.alumno_id = a.id AND m.estado = 'Activa'
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            WHERE a.fecha_nacimiento IS NOT NULL
+            ORDER BY 
+                CASE 
+                    WHEN (MONTH(a.fecha_nacimiento) > %s OR 
+                         (MONTH(a.fecha_nacimiento) = %s AND DAY(a.fecha_nacimiento) >= %s))
+                    THEN (MONTH(a.fecha_nacimiento) * 100 + DAY(a.fecha_nacimiento))
+                    ELSE (MONTH(a.fecha_nacimiento) * 100 + DAY(a.fecha_nacimiento)) + 1200
+                END
+            LIMIT 1
+        """, (hoy.month, hoy.month, hoy.day))
+        
+        # Procesar próximo cumpleaños
+        proximo_cumpleanos_data = None
+        if proximo_cumpleanos and proximo_cumpleanos['fecha_nacimiento']:
+            fecha_nac = proximo_cumpleanos['fecha_nacimiento']
+            cumple_este_anio = fecha_nac.replace(year=hoy.year)
+            if cumple_este_anio < hoy:
+                cumple_este_anio = cumple_este_anio.replace(year=hoy.year + 1)
+            
+            dias_restantes = (cumple_este_anio - hoy).days
+            
+            # Obtener nombre del mes en español
+            meses_espanol = [
+                'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+            ]
+            nombre_mes = meses_espanol[fecha_nac.month - 1]
+            
+            proximo_cumpleanos_data = {
+                'nombre': proximo_cumpleanos['nombre'],
+                'apellido': proximo_cumpleanos['apellido'],
+                'fecha_nacimiento': fecha_nac,
+                'grupo': proximo_cumpleanos['grupo_nombre'],
+                'dias_restantes': dias_restantes,
+                'nombre_mes': nombre_mes
+            }
+        
         # Dashboard diferente según el rol
         if usuario['rol'] == 'admin':
             return render_template('dashboard_admin.html', 
@@ -722,7 +798,12 @@ def dashboard():
                                  total_grupos=total_grupos,
                                  total_matriculas=total_matriculas,
                                  total_usuarios=total_usuarios,
-                                 total_listas=total_listas)
+                                 total_listas=total_listas,
+                                 total_cumpleanos_hoy=total_cumpleanos_hoy,
+                                 total_cumpleanos_semana=total_cumpleanos_semana,
+                                 total_cumpleanos_mes=total_cumpleanos_mes,
+                                 proximo_cumpleanos=proximo_cumpleanos_data,
+                                 now=datetime.now())
         else:
             # Obtener información completa del estudiante
             estudiante_info = obtener_info_estudiante(usuario['matricula_id'])
@@ -755,6 +836,7 @@ def dashboard():
                                  Matricula=Matricula,
                                  tiene_felicitacion=tiene_felicitacion,
                                  now=datetime.now())
+                                 
     except Exception as e:
         print(f"❌ Error en dashboard: {e}")
         flash('Error cargando el dashboard', 'error')
@@ -766,7 +848,12 @@ def dashboard():
                                  total_grupos=0,
                                  total_matriculas=0,
                                  total_usuarios=0,
-                                 total_listas=0)
+                                 total_listas=0,
+                                 total_cumpleanos_hoy=0,
+                                 total_cumpleanos_semana=0,
+                                 total_cumpleanos_mes=0,
+                                 proximo_cumpleanos=None,
+                                 now=datetime.now())
         else:
             return render_template('dashboard_estudiante.html', 
                                  usuario=usuario,
