@@ -162,8 +162,8 @@
         <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-primary text-white py-3">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-clock-history me-2"></i>Horario de Clases Semanal
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-clock-history me-2 text-white"></i>Horario de Clases Semanal
                     </h5>
                 </div>
                 <div class="card-body">
@@ -206,8 +206,8 @@
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-success text-white py-3">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-info-circle me-2"></i>Información Académica
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-info-circle me-2 text-white"></i>Información Académica
                     </h5>
                 </div>
                 <div class="card-body">
@@ -216,8 +216,8 @@
                         <div class="info-item bg-primary bg-opacity-10 p-3 rounded-3 border border-primary">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-primary mb-1">Estado de Matrícula</h6>
-                                    <h4 class="text-primary mb-0">
+                                    <h6 class="text-white mb-1">Estado de Matrícula</h6>
+                                    <h4 class="text-white mb-0">
                                         {% if estudiante and estudiante.matricula_actual %}
                                             {{ estudiante.matricula_actual.estado }}
                                         {% else %}
@@ -233,8 +233,8 @@
                         <div class="info-item bg-success bg-opacity-10 p-3 rounded-3 border border-success">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-success mb-1">Año Escolar</h6>
-                                    <h4 class="text-success mb-0">
+                                    <h6 class="text-white mb-1">Año Escolar</h6>
+                                    <h4 class="text-white mb-0">
                                         {% if estudiante and estudiante.matricula_actual %}
                                             {{ estudiante.matricula_actual.anio_escolar }}
                                         {% else %}
@@ -250,8 +250,8 @@
                         <div class="info-item bg-info bg-opacity-10 p-3 rounded-3 border border-info">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-info mb-1">Materias</h6>
-                                    <h4 class="text-info mb-0">
+                                    <h6 class="text-dark mb-1">Materias</h6>
+                                    <h4 class="text-dark mb-0">
                                         {% if estudiante and estudiante.horarios %}
                                             {{ estudiante.horarios|length }}
                                         {% else %}
@@ -268,8 +268,8 @@
                         <div class="info-item bg-pink bg-opacity-10 p-3 rounded-3 border border-pink">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-pink mb-1">Próximo Cumpleaños</h6>
-                                    <h4 class="text-pink mb-0">
+                                    <h6 class="text-white mb-1">Próximo Cumpleaños</h6>
+                                    <h4 class="text-white mb-0">
                                         {% set fecha_nac = estudiante.alumno.fecha_nacimiento %}
                                         {% set hoy = now.date() %}
                                         {% set cumple_este_anio = fecha_nac.replace(year=hoy.year) %}
