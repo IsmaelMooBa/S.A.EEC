@@ -1,0 +1,174 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-person-plus me-2"></i>Agregar Nuevo Maestro
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('agregar_maestro') }}">
+                    <div class="row">
+                        <!-- Información Personal -->
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">📝 Información Personal</h5>
+                            
+                            <div class="mb-3">
+                                <label for="nombre" class="form-label">Nombre *</label>
+                                <input type="text" class="form-control" id="nombre" name="nombre" 
+                                       value="{{ request.form.nombre }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="apellido" class="form-label">Apellido *</label>
+                                <input type="text" class="form-control" id="apellido" name="apellido" 
+                                       value="{{ request.form.apellido }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ request.form.email }}" required>
+                                <div class="form-text">El email debe ser único para cada maestro.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="telefono" class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" id="telefono" name="telefono" 
+                                       value="{{ request.form.telefono }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">🎓 Información Profesional</h5>
+                            
+                            <div class="mb-3">
+                                <label for="especialidad" class="form-label">Especialidad *</label>
+                                <select class="form-select" id="especialidad" name="especialidad" required>
+                                    <option value="">Seleccionar especialidad...</option>
+                                    <option value="Matemáticas" {% if request.form.especialidad == 'Matemáticas' %}selected{% endif %}>Matemáticas</option>
+                                    <option value="Ciencias" {% if request.form.especialidad == 'Ciencias' %}selected{% endif %}>Ciencias</option>
+                                    <option value="Lenguaje" {% if request.form.especialidad == 'Lenguaje' %}selected{% endif %}>Lenguaje</option>
+                                    <option value="Historia" {% if request.form.especialidad == 'Historia' %}selected{% endif %}>Historia</option>
+                                    <option value="Inglés" {% if request.form.especialidad == 'Inglés' %}selected{% endif %}>Inglés</option>
+                                    <option value="Educación Física" {% if request.form.especialidad == 'Educación Física' %}selected{% endif %}>Educación Física</option>
+                                    <option value="Arte" {% if request.form.especialidad == 'Arte' %}selected{% endif %}>Arte</option>
+                                    <option value="Música" {% if request.form.especialidad == 'Música' %}selected{% endif %}>Música</option>
+                                    <option value="Informática" {% if request.form.especialidad == 'Informática' %}selected{% endif %}>Informática</option>
+                                    <option value="Otro" {% if request.form.especialidad == 'Otro' %}selected{% endif %}>Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3" id="otraEspecialidadContainer" style="display: none;">
+                                <label for="otra_especialidad" class="form-label">Especificar especialidad</label>
+                                <input type="text" class="form-control" id="otra_especialidad" name="otra_especialidad" 
+                                       value="{{ request.form.otra_especialidad }}">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="fecha_contratacion" class="form-label">Fecha de Contratación</label>
+                                <input type="date" class="form-control" id="fecha_contratacion" name="fecha_contratacion" 
+                                       value="{{ request.form.fecha_contratacion or now.strftime('%Y-%m-%d') }}">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="salario" class="form-label">Salario</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="salario" name="salario" 
+                                           step="0.01" min="0" value="{{ request.form.salario }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información Adicional -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 mb-3">📍 Información Adicional</h5>
+                            
+                            <div class="mb-3">
+                                <label for="direccion" class="form-label">Dirección</label>
+                                <textarea class="form-control" id="direccion" name="direccion" 
+                                          rows="3">{{ request.form.direccion }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="notas" class="form-label">Notas Adicionales</label>
+                                <textarea class="form-control" id="notas" name="notas" 
+                                          rows="2">{{ request.form.notas }}</textarea>
+                                <div class="form-text">Información adicional sobre el maestro (opcional).</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="activo" name="activo" 
+                                       value="true" {% if not request.form or request.form.activo %}checked{% endif %}>
+                                <label class="form-check-label" for="activo">
+                                    Maestro activo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('maestros') }}" class="btn btn-secondary">
+                            ← Volver a la lista
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            💾 Guardar Maestro
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const especialidadSelect = document.getElementById('especialidad');
+    const otraEspecialidadContainer = document.getElementById('otraEspecialidadContainer');
+    
+    function toggleOtraEspecialidad() {
+        if (especialidadSelect.value === 'Otro') {
+            otraEspecialidadContainer.style.display = 'block';
+        } else {
+            otraEspecialidadContainer.style.display = 'none';
+        }
+    }
+    
+    especialidadSelect.addEventListener('change', toggleOtraEspecialidad);
+    toggleOtraEspecialidad(); // Ejecutar al cargar la página
+});
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+h5 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #495057;
+}
+</style>
+{% endblock %}

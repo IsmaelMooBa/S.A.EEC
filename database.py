@@ -97,6 +97,45 @@ class Database:
                 self.connection.rollback()
             return None
 
+    def agregar_columna_maestro_id(self):
+        """Agregar columna maestro_id a la tabla usuarios de forma segura"""
+        try:
+            # Verificar si la columna ya existe
+            check_query = """
+            SELECT COUNT(*) as existe 
+            FROM information_schema.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'usuarios' 
+            AND COLUMN_NAME = 'maestro_id'
+            """
+            resultado = self.fetch_one(check_query)
+            
+            if resultado and resultado['existe'] == 0:
+                # Agregar la columna
+                alter_query = "ALTER TABLE usuarios ADD COLUMN maestro_id INT"
+                self.execute_query(alter_query)
+                print("✅ Columna maestro_id agregada a la tabla usuarios")
+                
+                # Agregar foreign key
+                fk_query = """
+                ALTER TABLE usuarios 
+                ADD CONSTRAINT fk_usuario_maestro 
+                FOREIGN KEY (maestro_id) REFERENCES maestros(id) 
+                ON DELETE SET NULL
+                """
+                self.execute_query(fk_query)
+                print("✅ Foreign key fk_usuario_maestro agregada")
+                
+                # Crear índice
+                index_query = "CREATE INDEX idx_usuarios_maestro_id ON usuarios(maestro_id)"
+                self.execute_query(index_query)
+                print("✅ Índice idx_usuarios_maestro_id creado")
+            else:
+                print("✅ La columna maestro_id ya existe")
+                
+        except Exception as e:
+            print(f"⚠️ Error verificando/agregando columna maestro_id: {e}")
+
     def initialize_database(self):
         """Inicializar la base de datos con las tablas necesarias"""
         try:
@@ -167,6 +206,25 @@ class Database:
                 )
             """)
             
+            # Tabla de Maestros (NUEVA)
+            temp_cursor.execute("""
+                CREATE TABLE IF NOT EXISTS maestros (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    nombre VARCHAR(100) NOT NULL,
+                    apellido VARCHAR(100) NOT NULL,
+                    email VARCHAR(150) UNIQUE NOT NULL,
+                    telefono VARCHAR(20),
+                    especialidad VARCHAR(100),
+                    fecha_contratacion DATE,
+                    salario DECIMAL(10,2),
+                    direccion TEXT,
+                    notas TEXT,
+                    activo BOOLEAN DEFAULT TRUE,
+                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )
+            """)
+            
             # Tabla de Usuarios
             temp_cursor.execute("""
                 CREATE TABLE IF NOT EXISTS usuarios (
@@ -175,10 +233,12 @@ class Database:
                     password_hash VARCHAR(255) NOT NULL,
                     rol ENUM('admin', 'estudiante', 'profesor') DEFAULT 'estudiante',
                     matricula_id INT,
+                    maestro_id INT,
                     activo BOOLEAN DEFAULT TRUE,
                     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     ultimo_login TIMESTAMP NULL,
-                    FOREIGN KEY (matricula_id) REFERENCES matriculas(id) ON DELETE SET NULL
+                    FOREIGN KEY (matricula_id) REFERENCES matriculas(id) ON DELETE SET NULL,
+                    FOREIGN KEY (maestro_id) REFERENCES maestros(id) ON DELETE SET NULL
                 )
             """)
             
@@ -219,6 +279,9 @@ class Database:
             
             # Ahora conectamos a la base de datos específica
             self.connect()
+            
+            # Agregar columna maestro_id si es necesario (para compatibilidad)
+            self.agregar_columna_maestro_id()
             
             print("✅ Base de datos inicializada correctamente")
             return True

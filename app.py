@@ -28,7 +28,7 @@ os.makedirs(os.path.join(app.config['STATIC_FOLDER'], 'fotos'), exist_ok=True)
 # Importación después de configurar el path
 try:
     from database import Database
-    from models import Alumno, Grupo, Horario, Matricula, Usuario
+    from models import Alumno, Grupo, Horario, Matricula, Usuario, Maestro  # ← Agrega Maestro aquí
     print("✅ Módulos importados correctamente")
 except ImportError as e:
     print(f"❌ Error importando módulos: {e}")
@@ -66,6 +66,17 @@ except ImportError as e:
     class Usuario:
         @staticmethod
         def obtener_por_username(username): return None
+    
+    # Agrega también la clase Maestro básica para evitar errores
+    class Maestro:
+        @staticmethod
+        def obtener_todos(): return []
+        @staticmethod
+        def obtener_por_id(id): return None
+        @staticmethod
+        def eliminar(id): return False
+        @staticmethod
+        def buscar(texto): return []
 
 # Variable para controlar la inicialización de la base de datos
 db_initialized = False
@@ -193,6 +204,161 @@ def procesar_csv(archivo_csv):
         import traceback
         print(f"Error completo: {traceback.format_exc()}")
         return None, f"Error al procesar el CSV: {str(e)}"
+
+# ===== RUTAS PARA MAESTROS =====
+@app.route('/maestros')
+def maestros():
+    try:
+        # Obtener parámetros de búsqueda
+        search = request.args.get('search', '').strip()
+        letra_apellido = request.args.get('letra_apellido', '')
+        especialidad = request.args.get('especialidad', '')
+        
+        # Obtener todos los maestros
+        if search:
+            maestros = Maestro.buscar(search) or []
+        else:
+            maestros = Maestro.obtener_todos() or []
+        
+        # Aplicar filtros adicionales
+        if letra_apellido:
+            maestros = [m for m in maestros if 
+                       m['apellido'] and m['apellido'].upper().startswith(letra_apellido.upper())]
+        
+        if especialidad:
+            maestros = [m for m in maestros if m['especialidad'] == especialidad]
+        
+        return render_template('maestros.html', maestros=maestros)
+    except Exception as e:
+        flash(f'Error cargando maestros: {e}', 'error')
+        return render_template('maestros.html', maestros=[])
+
+@app.route('/agregar_maestro', methods=['GET', 'POST'])
+def agregar_maestro():
+    if request.method == 'POST':
+        try:
+            print("🎯 INICIANDO AGREGAR MAESTRO - DEBUG")
+            print(f"📋 Datos del formulario: {request.form}")
+            
+            nombre = request.form['nombre']
+            apellido = request.form['apellido']
+            email = request.form['email']
+            telefono = request.form.get('telefono', '')
+            especialidad = request.form['especialidad']
+            fecha_contratacion = request.form.get('fecha_contratacion')
+            salario = request.form.get('salario')
+            direccion = request.form.get('direccion', '')
+            notas = request.form.get('notas', '')
+            activo = request.form.get('activo') == 'true'
+
+            print(f"🔍 Datos procesados:")
+            print(f"   Nombre: {nombre}")
+            print(f"   Apellido: {apellido}")
+            print(f"   Email: {email}")
+            print(f"   Especialidad: {especialidad}")
+            print(f"   Teléfono: {telefono}")
+            print(f"   Fecha Contratación: {fecha_contratacion}")
+            print(f"   Salario: {salario}")
+            print(f"   Activo: {activo}")
+
+            # Convertir salario a float si existe
+            salario_float = float(salario) if salario else None
+            
+            # Manejar especialidad "Otro"
+            if especialidad == 'Otro':
+                especialidad = request.form.get('otra_especialidad', 'General')
+                print(f"🔍 Especialidad cambiada a: {especialidad}")
+
+            if not nombre or not apellido or not email or not especialidad:
+                flash('Por favor complete todos los campos requeridos', 'error')
+                return render_template('agregar_maestro.html')
+
+            maestro = Maestro(
+                nombre=nombre,
+                apellido=apellido,
+                email=email,
+                telefono=telefono,
+                especialidad=especialidad,
+                fecha_contratacion=fecha_contratacion,
+                salario=salario_float,
+                direccion=direccion,
+                notas=notas,
+                activo=activo
+            )
+
+            print("🎯 Intentando guardar maestro...")
+            resultado = maestro.guardar()
+            
+            if resultado:
+                print("✅ Maestro guardado exitosamente")
+                flash('Maestro agregado correctamente', 'success')
+                return redirect(url_for('maestros'))
+            else:
+                print("❌ Error al guardar maestro")
+                flash('Error al agregar maestro. Verifique que el email no exista.', 'error')
+                
+        except Exception as e:
+            print(f"❌ Error al procesar el formulario: {e}")
+            import traceback
+            traceback.print_exc()
+            flash(f'Error al procesar el formulario: {e}', 'error')
+
+    return render_template('agregar_maestro.html', now=datetime.now())
+
+@app.route('/editar_maestro/<int:id>', methods=['GET', 'POST'])
+def editar_maestro(id):
+    try:
+        maestro_data = Maestro.obtener_por_id(id)
+        if not maestro_data:
+            flash('Maestro no encontrado', 'error')
+            return redirect(url_for('maestros'))
+        
+        maestro = Maestro(**maestro_data)
+        
+        if request.method == 'POST':
+            maestro.nombre = request.form['nombre']
+            maestro.apellido = request.form['apellido']
+            maestro.email = request.form['email']
+            maestro.telefono = request.form.get('telefono', '')
+            maestro.especialidad = request.form['especialidad']
+            maestro.fecha_contratacion = request.form.get('fecha_contratacion')
+            
+            # Manejar salario
+            salario = request.form.get('salario')
+            maestro.salario = float(salario) if salario else None
+            
+            maestro.direccion = request.form.get('direccion', '')
+            maestro.notas = request.form.get('notas', '')
+            maestro.activo = request.form.get('activo') == 'true'
+            
+            # Manejar especialidad "Otro"
+            if maestro.especialidad == 'Otro':
+                maestro.especialidad = request.form.get('otra_especialidad', 'General')
+            
+            resultado = maestro.actualizar()
+            if resultado:
+                flash('Maestro actualizado correctamente', 'success')
+                return redirect(url_for('maestros'))
+            else:
+                flash('Error al actualizar maestro', 'error')
+        
+        return render_template('editar_maestro.html', maestro=maestro, now=datetime.now())
+    except Exception as e:
+        flash(f'Error: {e}', 'error')
+        return redirect(url_for('maestros'))
+
+@app.route('/eliminar_maestro/<int:id>')
+def eliminar_maestro(id):
+    try:
+        resultado = Maestro.eliminar(id)
+        if resultado:
+            flash('Maestro eliminado correctamente', 'success')
+        else:
+            flash('Error al eliminar maestro', 'error')
+    except Exception as e:
+        flash(f'Error: {e}', 'error')
+    
+    return redirect(url_for('maestros'))
 
 # ===== RUTAS PARA PASE DE LISTA =====
 

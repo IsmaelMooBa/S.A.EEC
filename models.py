@@ -74,7 +74,170 @@ class Alumno:
         except Exception as e:
             print(f"❌ Error eliminando alumno: {e}")
             return False
+class Maestro:
+    def __init__(self, id=None, nombre=None, apellido=None, email=None, telefono=None, 
+                 especialidad=None, fecha_contratacion=None, salario=None, direccion=None, 
+                 notas=None, activo=True, fecha_creacion=None, fecha_actualizacion=None, **kwargs):
+        self.id = id
+        self.nombre = nombre
+        self.apellido = apellido
+        self.email = email
+        self.telefono = telefono
+        self.especialidad = especialidad
+        self.fecha_contratacion = fecha_contratacion
+        self.salario = salario
+        self.direccion = direccion
+        self.notas = notas
+        self.activo = activo
+        self.fecha_creacion = fecha_creacion
+        self.fecha_actualizacion = fecha_actualizacion
 
+    def guardar(self):  # ← ESTE MÉTODO DEBE ESTAR DENTRO DE LA CLASE
+        """Guardar un nuevo maestro en la base de datos"""
+        try:
+            print("🎯 MAESTRO.GUARDAR() - INICIANDO")
+            print(f"📋 Datos del maestro:")
+            print(f"   Nombre: {self.nombre}")
+            print(f"   Apellido: {self.apellido}")
+            print(f"   Email: {self.email}")
+            print(f"   Especialidad: {self.especialidad}")
+            print(f"   Salario: {self.salario}")
+            
+            query = """
+                INSERT INTO maestros (nombre, apellido, email, telefono, especialidad, 
+                                    fecha_contratacion, salario, direccion, notas, activo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            params = (self.nombre, self.apellido, self.email, self.telefono, 
+                     self.especialidad, self.fecha_contratacion, self.salario, 
+                     self.direccion, self.notas, self.activo)
+            
+            print(f"🔍 Query: {query}")
+            print(f"🔍 Parámetros: {params}")
+            
+            resultado = db.execute_query(query, params)
+            
+            if resultado:
+                self.id = db.cursor.lastrowid
+                print(f"✅ Maestro guardado con ID: {self.id}")
+                
+                # Generar usuario automáticamente para el maestro
+                if self.email:
+                    print(f"🎯 Generando usuario para maestro ID: {self.id}")
+                    usuario_creado = Usuario.generar_usuario_maestro(
+                        self.id, 
+                        self.email, 
+                        f"{self.nombre} {self.apellido}"
+                    )
+                    if usuario_creado:
+                        print("✅ Usuario maestro creado exitosamente")
+                    else:
+                        print("⚠️ No se pudo crear usuario maestro")
+                        
+            else:
+                print("❌ db.execute_query retornó False")
+                
+            return resultado
+            
+        except Exception as e:
+            print(f"❌ Error guardando maestro: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def actualizar(self):
+        """Actualizar un maestro existente"""
+        try:
+            query = """
+                UPDATE maestros 
+                SET nombre = %s, apellido = %s, email = %s, telefono = %s, 
+                    especialidad = %s, fecha_contratacion = %s, salario = %s, 
+                    direccion = %s, notas = %s, activo = %s
+                WHERE id = %s
+            """
+            params = (self.nombre, self.apellido, self.email, self.telefono,
+                     self.especialidad, self.fecha_contratacion, self.salario,
+                     self.direccion, self.notas, self.activo, self.id)
+            
+            return db.execute_query(query, params)
+        except Exception as e:
+            print(f"❌ Error actualizando maestro: {e}")
+            return False
+
+    @staticmethod
+    def obtener_todos():
+        """Obtener todos los maestros"""
+        try:
+            query = "SELECT * FROM maestros ORDER BY apellido, nombre"
+            return db.fetch_all(query)
+        except Exception as e:
+            print(f"❌ Error obteniendo maestros: {e}")
+            return []
+
+    @staticmethod
+    def obtener_por_id(id):
+        """Obtener un maestro por su ID"""
+        try:
+            query = "SELECT * FROM maestros WHERE id = %s"
+            return db.fetch_one(query, (id,))
+        except Exception as e:
+            print(f"❌ Error obteniendo maestro por ID: {e}")
+            return None
+
+    @staticmethod
+    def obtener_por_especialidad(especialidad):
+        """Obtener maestros por especialidad"""
+        try:
+            query = "SELECT * FROM maestros WHERE especialidad = %s AND activo = TRUE ORDER BY apellido, nombre"
+            return db.fetch_all(query, (especialidad,))
+        except Exception as e:
+            print(f"❌ Error obteniendo maestros por especialidad: {e}")
+            return []
+
+    @staticmethod
+    def eliminar(id):
+        """Eliminar un maestro (eliminación física)"""
+        try:
+            query = "DELETE FROM maestros WHERE id = %s"
+            return db.execute_query(query, (id,))
+        except Exception as e:
+            print(f"❌ Error eliminando maestro: {e}")
+            return False
+
+    @staticmethod
+    def desactivar(id):
+        """Desactivar un maestro (eliminación lógica)"""
+        try:
+            query = "UPDATE maestros SET activo = FALSE WHERE id = %s"
+            return db.execute_query(query, (id,))
+        except Exception as e:
+            print(f"❌ Error desactivando maestro: {e}")
+            return False
+
+    @staticmethod
+    def buscar(texto):
+        """Buscar maestros por nombre, apellido, email o especialidad"""
+        try:
+            query = """
+                SELECT * FROM maestros 
+                WHERE (nombre LIKE %s OR apellido LIKE %s OR email LIKE %s OR especialidad LIKE %s)
+                ORDER BY apellido, nombre
+            """
+            search_term = f"%{texto}%"
+            return db.fetch_all(query, (search_term, search_term, search_term, search_term))
+        except Exception as e:
+            print(f"❌ Error buscando maestros: {e}")
+            return []
+
+    @staticmethod
+    def obtener_activos():
+        """Obtener solo maestros activos"""
+        try:
+            query = "SELECT * FROM maestros WHERE activo = TRUE ORDER BY apellido, nombre"
+            return db.fetch_all(query)
+        except Exception as e:
+            print(f"❌ Error obteniendo maestros activos: {e}")
+            return []
 
 class Grupo:
     def __init__(self, id=None, nombre=None, grado=None, turno=None, capacidad=None):
@@ -413,16 +576,22 @@ class Matricula:
 
 
 class Usuario:
-    def __init__(self, id=None, matricula_id=None, username=None, password_hash=None, 
-                 rol=None, fecha_creacion=None, ultimo_login=None, activo=True):
+    def __init__(self, id=None, matricula_id=None, maestro_id=None, username=None, password_hash=None, 
+                 rol=None, fecha_creacion=None, ultimo_login=None, activo=True, **kwargs):
+        # Asignar todos los campos explícitamente
         self.id = id
         self.matricula_id = matricula_id
+        self.maestro_id = maestro_id  # ← ESTE ES EL CAMPO CLAVE
         self.username = username
         self.password_hash = password_hash
         self.rol = rol
         self.fecha_creacion = fecha_creacion
         self.ultimo_login = ultimo_login
         self.activo = activo
+        
+        # Manejar cualquier campo extra que pueda venir de la base de datos
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @staticmethod
     def hash_password(password):
@@ -452,7 +621,7 @@ class Usuario:
             return False
 
     @staticmethod
-    def crear_usuario(username, password, rol='estudiante', matricula_id=None):
+    def crear_usuario(username, password, rol='estudiante', matricula_id=None, maestro_id=None):
         """Crear nuevo usuario"""
         try:
             password_hash = Usuario.hash_password(password)
@@ -460,10 +629,10 @@ class Usuario:
                 return False
                 
             query = """
-            INSERT INTO usuarios (username, password_hash, rol, matricula_id)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO usuarios (username, password_hash, rol, matricula_id, maestro_id)
+            VALUES (%s, %s, %s, %s, %s)
             """
-            params = (username, password_hash, rol, matricula_id)
+            params = (username, password_hash, rol, matricula_id, maestro_id)
             return db.execute_query(query, params)
         except Exception as e:
             print(f"❌ Error creando usuario: {e}")
@@ -471,15 +640,37 @@ class Usuario:
 
     @staticmethod
     def obtener_por_username(username):
-        """Obtener usuario por nombre de usuario"""
+        """Obtener usuario por nombre de usuario - VERSIÓN SEGURA"""
         try:
             query = "SELECT * FROM usuarios WHERE username = %s AND activo = TRUE"
             result = db.fetch_one(query, (username,))
+            
             if result:
-                return Usuario(**result)
+                print(f"🔍 Obteniendo usuario: {username}")
+                print(f"🔍 Campos encontrados: {list(result.keys())}")
+                
+                # Crear instancia de forma segura
+                usuario = Usuario()
+                
+                # Asignar campos uno por uno de forma segura
+                campos_validos = ['id', 'matricula_id', 'maestro_id', 'username', 'password_hash', 
+                                'rol', 'fecha_creacion', 'ultimo_login', 'activo']
+                
+                for campo in campos_validos:
+                    if campo in result:
+                        setattr(usuario, campo, result[campo])
+                    else:
+                        setattr(usuario, campo, None)
+                
+                print(f"✅ Usuario creado exitosamente: {usuario.username}")
+                return usuario
+                
             return None
+            
         except Exception as e:
             print(f"❌ Error obteniendo usuario: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     @staticmethod
@@ -489,10 +680,35 @@ class Usuario:
             query = "SELECT * FROM usuarios WHERE matricula_id = %s AND activo = TRUE"
             result = db.fetch_one(query, (matricula_id,))
             if result:
-                return Usuario(**result)
+                usuario = Usuario()
+                campos_validos = ['id', 'matricula_id', 'maestro_id', 'username', 'password_hash', 
+                                'rol', 'fecha_creacion', 'ultimo_login', 'activo']
+                for campo in campos_validos:
+                    if campo in result:
+                        setattr(usuario, campo, result[campo])
+                return usuario
             return None
         except Exception as e:
             print(f"❌ Error obteniendo usuario por matrícula: {e}")
+            return None
+
+    @staticmethod
+    def obtener_por_maestro(maestro_id):
+        """Obtener usuario por ID de maestro"""
+        try:
+            query = "SELECT * FROM usuarios WHERE maestro_id = %s AND activo = TRUE"
+            result = db.fetch_one(query, (maestro_id,))
+            if result:
+                usuario = Usuario()
+                campos_validos = ['id', 'matricula_id', 'maestro_id', 'username', 'password_hash', 
+                                'rol', 'fecha_creacion', 'ultimo_login', 'activo']
+                for campo in campos_validos:
+                    if campo in result:
+                        setattr(usuario, campo, result[campo])
+                return usuario
+            return None
+        except Exception as e:
+            print(f"❌ Error obteniendo usuario por maestro: {e}")
             return None
 
     def actualizar_ultimo_login(self):
@@ -517,7 +733,7 @@ class Usuario:
             # Crear nuevo usuario
             resultado = Usuario.crear_usuario(
                 username=codigo_matricula,
-                password=codigo_matricula,  # Mismo código como contraseña
+                password=codigo_matricula,
                 rol='estudiante',
                 matricula_id=matricula_id
             )
@@ -531,6 +747,45 @@ class Usuario:
             
         except Exception as e:
             print(f"❌ Error generando usuario estudiante: {e}")
+            return False
+
+    @staticmethod
+    def generar_usuario_maestro(maestro_id, email, nombre_completo):
+        """Generar usuario automáticamente para maestro"""
+        try:
+            # Verificar si ya existe
+            usuario_existente = Usuario.obtener_por_maestro(maestro_id)
+            if usuario_existente:
+                print(f"✅ Usuario ya existe para maestro {maestro_id}")
+                return True
+
+            # Generar username a partir del email
+            username = email.split('@')[0]
+            
+            # Verificar si el username ya existe
+            contador = 1
+            username_original = username
+            while Usuario.obtener_por_username(username):
+                username = f"{username_original}{contador}"
+                contador += 1
+
+            # Crear nuevo usuario
+            resultado = Usuario.crear_usuario(
+                username=username,
+                password=username,
+                rol='maestro',
+                maestro_id=maestro_id
+            )
+            
+            if resultado:
+                print(f"✅ Usuario maestro creado: {username} para {nombre_completo}")
+            else:
+                print(f"❌ Error creando usuario maestro: {username}")
+                
+            return resultado
+            
+        except Exception as e:
+            print(f"❌ Error generando usuario maestro: {e}")
             return False
 
     @staticmethod
