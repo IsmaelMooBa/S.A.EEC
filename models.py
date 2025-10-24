@@ -364,7 +364,7 @@ class Horario:
 
 class Matricula:
     def __init__(self, id=None, alumno_id=None, grupo_id=None, fecha_matricula=None,
-                 anio_escolar=None, estado=None, codigo_matricula=None):
+                 anio_escolar=None, estado=None, codigo_matricula=None, permite_login=True, **kwargs):
         self.id = id
         self.alumno_id = alumno_id
         self.grupo_id = grupo_id
@@ -372,6 +372,11 @@ class Matricula:
         self.anio_escolar = anio_escolar
         self.estado = estado
         self.codigo_matricula = codigo_matricula
+        self.permite_login = permite_login
+        
+        # Manejar cualquier campo extra que pueda venir de la base de datos
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     def guardar(self):
         """Guardar nueva matrícula en la base de datos y generar código automático"""
@@ -385,7 +390,7 @@ class Matricula:
             VALUES (%s, %s, %s, %s, %s, %s)
             """
             params = (self.alumno_id, self.grupo_id, self.fecha_matricula, 
-                     self.anio_escolar, self.estado, True)
+                     self.anio_escolar, self.estado, self.permite_login)
             
             print(f"🔍 Ejecutando query de inserción...")
             resultado = db.execute_query(query, params)
@@ -574,6 +579,203 @@ class Matricula:
             print(f"❌ Error obteniendo matrícula activa: {e}")
             return None
 
+class MatriculaMaestro:
+    def __init__(self, id=None, codigo_matricula=None, maestro_id=None, fecha_matricula=None,
+                 anio_escolar=None, estado=None, especialidad_principal=None, 
+                 grado_asignado=None, turno_asignado=None, observaciones=None, permite_login=True, **kwargs):
+        self.id = id
+        self.codigo_matricula = codigo_matricula
+        self.maestro_id = maestro_id
+        self.fecha_matricula = fecha_matricula
+        self.anio_escolar = anio_escolar
+        self.estado = estado
+        self.especialidad_principal = especialidad_principal
+        self.grado_asignado = grado_asignado
+        self.turno_asignado = turno_asignado
+        self.observaciones = observaciones
+        self.permite_login = permite_login
+        
+        # Manejar cualquier campo extra que pueda venir de la base de datos
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def guardar(self):  # ← ESTE MÉTODO DEBE ESTAR DENTRO DE LA CLASE
+        """Guardar nueva matrícula de maestro con formato P-INICIALES-AÑO-ID"""
+        try:
+            print(f"🔍 INICIANDO GUARDADO DE MATRÍCULA MAESTRO")
+            print(f"🔍 Datos: maestro_id={self.maestro_id}, anio_escolar={self.anio_escolar}")
+            
+            # 1️⃣ Primero insertamos la matrícula básica
+            query = """
+            INSERT INTO matriculas_maestros 
+            (maestro_id, fecha_matricula, anio_escolar, estado, especialidad_principal, 
+             grado_asignado, turno_asignado, observaciones, permite_login)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            params = (self.maestro_id, self.fecha_matricula, self.anio_escolar, 
+                     self.estado, self.especialidad_principal, self.grado_asignado,
+                     self.turno_asignado, self.observaciones, self.permite_login)
+            
+            print(f"🔍 Ejecutando query de inserción...")
+            resultado = db.execute_query(query, params)
+            
+            if not resultado:
+                print("❌ No se pudo insertar la matrícula del maestro")
+                return False
+
+            # 2️⃣ Obtener el ID de la matrícula recién insertada
+            get_id_query = "SELECT LAST_INSERT_ID() as id"
+            id_result = db.fetch_one(get_id_query)
+            
+            if not id_result:
+                print("❌ No se pudo obtener el ID de la matrícula insertada")
+                return False
+
+            matricula_id = id_result['id']
+            print(f"🔍 ID de matrícula obtenido: {matricula_id}")
+
+            # 3️⃣ Buscar los datos del maestro para generar las iniciales
+            maestro_query = "SELECT nombre, apellido, especialidad FROM maestros WHERE id = %s"
+            maestro_data = db.fetch_one(maestro_query, (self.maestro_id,))
+            
+            if not maestro_data:
+                print("❌ No se encontró el maestro con ID:", self.maestro_id)
+                return False
+
+            # 4️⃣ Generar código con iniciales (formato: P-INICIALES-AÑO-ID)
+            nombre_completo = maestro_data['nombre'].strip()
+            apellido_completo = maestro_data['apellido'].strip()
+            
+            partes_nombre = nombre_completo.split()
+            partes_apellido = apellido_completo.split()
+
+            # Obtener iniciales del nombre (primera letra del primer nombre)
+            inicial_nombre = partes_nombre[0][0].upper() if partes_nombre else ""
+            
+            # Obtener iniciales del apellido (primera letra del primer apellido)
+            inicial_apellido = partes_apellido[0][0].upper() if partes_apellido else ""
+
+            # Combinar iniciales (máximo 2 letras)
+            iniciales = f"{inicial_nombre}{inicial_apellido}"
+            
+            if len(iniciales) < 2:
+                iniciales = "PR"  # Default si no hay suficientes iniciales
+
+            # 5️⃣ Crear código final con formato: P-INICIALES-AÑO-ID
+            codigo = f"P-{iniciales}-{self.anio_escolar}-{matricula_id}"
+            print(f"🔍 Código generado: {codigo}")
+
+            # 6️⃣ Actualizar la matrícula con el código
+            update_query = "UPDATE matriculas_maestros SET codigo_matricula = %s WHERE id = %s"
+            resultado_update = db.execute_query(update_query, (codigo, matricula_id))
+            
+            if resultado_update:
+                print(f"✅ Matrícula de maestro creada exitosamente con código: {codigo}")
+                
+                # 7️⃣ GENERAR USUARIO AUTOMÁTICAMENTE PARA EL MAESTRO
+                usuario_creado = Usuario.generar_usuario_maestro(matricula_id, codigo, f"{nombre_completo} {apellido_completo}")
+                
+                if usuario_creado:
+                    print(f"✅ Usuario maestro creado exitosamente: {codigo}")
+                else:
+                    print(f"⚠️ Matrícula creada pero falló la creación de usuario: {codigo}")
+                
+                return True
+            else:
+                print("❌ Falló la actualización del código")
+                return False
+
+        except Exception as e:
+            print(f"❌ ERROR guardando matrícula de maestro: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    # ... (los otros métodos estáticos permanecen igual)
+    @staticmethod
+    def obtener_todas():
+        """Obtener todas las matrículas de maestros con información completa"""
+        try:
+            query = """
+            SELECT mm.*, 
+                   m.nombre AS maestro_nombre, 
+                   m.apellido AS maestro_apellido,
+                   m.email AS maestro_email,
+                   m.especialidad AS maestro_especialidad
+            FROM matriculas_maestros mm
+            JOIN maestros m ON mm.maestro_id = m.id
+            ORDER BY mm.fecha_matricula DESC
+            """
+            return db.fetch_all(query)
+        except Exception as e:
+            print(f"❌ Error obteniendo matrículas de maestros: {e}")
+            return []
+
+    @staticmethod
+    def obtener_por_maestro(maestro_id):
+        """Obtener matrículas de un maestro específico"""
+        try:
+            query = """
+            SELECT mm.* 
+            FROM matriculas_maestros mm
+            WHERE mm.maestro_id = %s
+            ORDER BY mm.anio_escolar DESC
+            """
+            return db.fetch_all(query, (maestro_id,))
+        except Exception as e:
+            print(f"❌ Error obteniendo matrículas del maestro: {e}")
+            return []
+
+    @staticmethod
+    def obtener_por_id(matricula_id):
+        """Obtener matrícula por ID"""
+        try:
+            query = """
+            SELECT mm.*, 
+                   m.nombre AS maestro_nombre, 
+                   m.apellido AS maestro_apellido,
+                   m.email AS maestro_email
+            FROM matriculas_maestros mm
+            JOIN maestros m ON mm.maestro_id = m.id
+            WHERE mm.id = %s
+            """
+            return db.fetch_one(query, (matricula_id,))
+        except Exception as e:
+            print(f"❌ Error obteniendo matrícula de maestro por ID: {e}")
+            return None
+
+    @staticmethod
+    def actualizar_estado(matricula_id, estado):
+        """Actualizar estado de una matrícula de maestro"""
+        try:
+            query = "UPDATE matriculas_maestros SET estado = %s WHERE id = %s"
+            return db.execute_query(query, (estado, matricula_id))
+        except Exception as e:
+            print(f"❌ Error actualizando estado de matrícula de maestro: {e}")
+            return False
+
+    @staticmethod
+    def eliminar(matricula_id):
+        """Eliminar matrícula de maestro"""
+        try:
+            query = "DELETE FROM matriculas_maestros WHERE id = %s"
+            return db.execute_query(query, (matricula_id,))
+        except Exception as e:
+            print(f"❌ Error eliminando matrícula de maestro: {e}")
+            return False
+
+    @staticmethod
+    def obtener_matricula_activa(maestro_id, anio_escolar):
+        """Obtener matrícula activa de un maestro en un año escolar"""
+        try:
+            query = """
+            SELECT * FROM matriculas_maestros 
+            WHERE maestro_id = %s AND anio_escolar = %s AND estado = 'Activa'
+            """
+            return db.fetch_one(query, (maestro_id, anio_escolar))
+        except Exception as e:
+            print(f"❌ Error obteniendo matrícula activa de maestro: {e}")
+            return None
 
 class Usuario:
     def __init__(self, id=None, matricula_id=None, maestro_id=None, username=None, password_hash=None, 
@@ -750,37 +952,38 @@ class Usuario:
             return False
 
     @staticmethod
-    def generar_usuario_maestro(maestro_id, email, nombre_completo):
-        """Generar usuario automáticamente para maestro"""
+    def generar_usuario_maestro(matricula_maestro_id, codigo_matricula, nombre_completo):
+        """Generar usuario automáticamente para maestro basado en su matrícula"""
         try:
-            # Verificar si ya existe
+            # Buscar el maestro_id a partir de la matrícula_maestro_id
+            db = Database()
+            matricula_query = "SELECT maestro_id FROM matriculas_maestros WHERE id = %s"
+            matricula_data = db.fetch_one(matricula_query, (matricula_maestro_id,))
+            
+            if not matricula_data:
+                print(f"❌ No se encontró la matrícula de maestro con ID: {matricula_maestro_id}")
+                return False
+
+            maestro_id = matricula_data['maestro_id']
+            
+            # Verificar si ya existe usuario para este maestro
             usuario_existente = Usuario.obtener_por_maestro(maestro_id)
             if usuario_existente:
                 print(f"✅ Usuario ya existe para maestro {maestro_id}")
                 return True
 
-            # Generar username a partir del email
-            username = email.split('@')[0]
-            
-            # Verificar si el username ya existe
-            contador = 1
-            username_original = username
-            while Usuario.obtener_por_username(username):
-                username = f"{username_original}{contador}"
-                contador += 1
-
-            # Crear nuevo usuario
+            # Crear nuevo usuario usando el código de matrícula como username
             resultado = Usuario.crear_usuario(
-                username=username,
-                password=username,
+                username=codigo_matricula,
+                password=codigo_matricula,  # Mismo código como contraseña inicial
                 rol='maestro',
                 maestro_id=maestro_id
             )
             
             if resultado:
-                print(f"✅ Usuario maestro creado: {username} para {nombre_completo}")
+                print(f"✅ Usuario maestro creado: {codigo_matricula} para {nombre_completo}")
             else:
-                print(f"❌ Error creando usuario maestro: {username}")
+                print(f"❌ Error creando usuario maestro: {codigo_matricula}")
                 
             return resultado
             

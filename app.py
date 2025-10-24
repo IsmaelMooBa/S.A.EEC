@@ -28,7 +28,7 @@ os.makedirs(os.path.join(app.config['STATIC_FOLDER'], 'fotos'), exist_ok=True)
 # Importación después de configurar el path
 try:
     from database import Database
-    from models import Alumno, Grupo, Horario, Matricula, Usuario, Maestro  # ← Agrega Maestro aquí
+    from models import Alumno, Grupo, Horario, Matricula, Usuario, Maestro, MatriculaMaestro  # ← Agrega Maestro aquí
     print("✅ Módulos importados correctamente")
 except ImportError as e:
     print(f"❌ Error importando módulos: {e}")
@@ -62,7 +62,15 @@ except ImportError as e:
         def obtener_por_id(id): return None
         @staticmethod
         def obtener_por_alumno(alumno_id): return []
-    
+
+    class MatriculaMaestro:
+        @staticmethod
+        def obtener_por_maestro(maestro_id): return []
+        @staticmethod
+        def eliminar(id): return False
+        @staticmethod
+        def actualizar_estado(matricula_id, estado): return False
+
     class Usuario:
         @staticmethod
         def obtener_por_username(username): return None
@@ -77,6 +85,7 @@ except ImportError as e:
         def eliminar(id): return False
         @staticmethod
         def buscar(texto): return []
+        
 
 # Variable para controlar la inicialización de la base de datos
 db_initialized = False
@@ -204,7 +213,171 @@ def procesar_csv(archivo_csv):
         import traceback
         print(f"Error completo: {traceback.format_exc()}")
         return None, f"Error al procesar el CSV: {str(e)}"
+# ===== RUTAS PARA MATRÍCULAS DE MAESTROS =====
 
+@app.route('/matriculas_maestros')
+def matriculas_maestros():
+    """Gestión de matrículas de maestros"""
+    try:
+        # Obtener parámetros de búsqueda
+        search = request.args.get('search', '').strip()
+        estado = request.args.get('estado', '')
+        anio_escolar = request.args.get('anio_escolar', '')
+        
+        # Obtener todas las matrículas de maestros
+        if search:
+            # Búsqueda por nombre, apellido, código o especialidad
+            db = Database()
+            query = """
+                SELECT mm.*, 
+                       m.nombre AS maestro_nombre, 
+                       m.apellido AS maestro_apellido,
+                       m.email AS maestro_email,
+                       m.especialidad AS maestro_especialidad
+                FROM matriculas_maestros mm
+                JOIN maestros m ON mm.maestro_id = m.id
+                WHERE (m.nombre LIKE %s OR m.apellido LIKE %s OR 
+                       mm.codigo_matricula LIKE %s OR m.especialidad LIKE %s)
+            """
+            search_term = f"%{search}%"
+            matriculas = db.fetch_all(query, (search_term, search_term, search_term, search_term)) or []
+        else:
+            matriculas = MatriculaMaestro.obtener_todas() or []
+        
+        # Aplicar filtros adicionales
+        if estado:
+            matriculas = [m for m in matriculas if m['estado'] == estado]
+        
+        if anio_escolar:
+            matriculas = [m for m in matriculas if str(m['anio_escolar']) == anio_escolar]
+        
+        # Obtener todos los maestros para el modal
+        maestros = Maestro.obtener_todos() or []
+        
+        return render_template('matriculas_maestros.html', 
+                             matriculas=matriculas,
+                             maestros=maestros,
+                             now=datetime.now())
+        
+    except Exception as e:
+        flash(f'Error cargando matrículas de maestros: {e}', 'error')
+        return render_template('matriculas_maestros.html', 
+                             matriculas=[],
+                             maestros=[],
+                             now=datetime.now())
+
+@app.route('/agregar_matricula_maestro', methods=['POST'])
+def agregar_matricula_maestro():
+    """Agregar nueva matrícula para maestro"""
+    try:
+        print("🎯 INICIANDO AGREGAR_MATRICULA_MAESTRO")
+        
+        # Obtener datos del formulario
+        maestro_id = request.form.get('maestro_id')
+        anio_escolar = request.form.get('anio_escolar')
+        estado = request.form.get('estado')
+        especialidad_principal = request.form.get('especialidad_principal')
+        grado_asignado = request.form.get('grado_asignado')
+        turno_asignado = request.form.get('turno_asignado')
+        observaciones = request.form.get('observaciones', '')
+        
+        print(f"🎯 DATOS DEL FORMULARIO:")
+        print(f"   maestro_id: {maestro_id}")
+        print(f"   anio_escolar: {anio_escolar}")
+        print(f"   estado: {estado}")
+        print(f"   especialidad_principal: {especialidad_principal}")
+        
+        # Validar campos requeridos
+        if not maestro_id or not anio_escolar or not estado:
+            flash('Debe completar todos los campos requeridos', 'error')
+            return redirect(url_for('matriculas_maestros'))
+        
+        # Convertir a enteros
+        try:
+            maestro_id = int(maestro_id)
+            anio_escolar = int(anio_escolar)
+        except ValueError as e:
+            flash('Error en el formato de los datos numéricos', 'error')
+            return redirect(url_for('matriculas_maestros'))
+        
+        # Verificar que el maestro existe
+        maestro = Maestro.obtener_por_id(maestro_id)
+        if not maestro:
+            flash('El maestro seleccionado no existe', 'error')
+            return redirect(url_for('matriculas_maestros'))
+        
+        print(f"🎯 MAESTRO ENCONTRADO: {maestro['nombre']} {maestro['apellido']}")
+
+        # Crear objeto matrícula de maestro
+        matricula = MatriculaMaestro(
+            maestro_id=maestro_id,
+            fecha_matricula=datetime.now().date(),
+            anio_escolar=anio_escolar,
+            estado=estado,
+            especialidad_principal=especialidad_principal,
+            grado_asignado=grado_asignado,
+            turno_asignado=turno_asignado,
+            observaciones=observaciones
+        )
+        
+        print("🎯 OBJETO MATRICULA MAESTRO CREADO, LLAMANDO A guardar()...")
+        
+        # Guardar matrícula
+        resultado = matricula.guardar()
+        
+        print(f"🎯 RESULTADO DE guardar(): {resultado}")
+        
+        if resultado:
+            print("✅ MATRÍCULA MAESTRO GUARDADA EXITOSAMENTE")
+            flash('Matrícula de maestro agregada correctamente', 'success')
+        else:
+            print("❌ matricula.guardar() retornó False")
+            flash('Error al agregar matrícula de maestro', 'error')
+            
+    except Exception as e:
+        print(f"❌ ERROR CRÍTICO en agregar_matricula_maestro: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Error al procesar la solicitud: {str(e)}', 'error')
+    
+    return redirect(url_for('matriculas_maestros'))
+
+@app.route('/cambiar_estado_matricula_maestro', methods=['POST'])
+def cambiar_estado_matricula_maestro():
+    """Cambiar estado de matrícula de maestro"""
+    try:
+        data = request.get_json()
+        matricula_id = data['matricula_id']
+        estado = data['estado']
+        
+        resultado = MatriculaMaestro.actualizar_estado(matricula_id, estado)
+        if resultado:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/eliminar_matricula_maestro', methods=['POST'])
+def eliminar_matricula_maestro():
+    """Eliminar matrícula de maestro"""
+    try:
+        data = request.get_json()
+        matricula_id = data['matricula_id']
+        
+        print(f"🎯 Eliminando matrícula de maestro ID: {matricula_id}")
+        
+        resultado = MatriculaMaestro.eliminar(matricula_id)
+        
+        if resultado:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar la matrícula'})
+            
+    except Exception as e:
+        print(f"❌ Error eliminando matrícula de maestro: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+    
 # ===== RUTAS PARA MAESTROS =====
 @app.route('/maestros')
 def maestros():
@@ -803,9 +976,6 @@ def login():
     if 'usuario' in session:
         return redirect(url_for('dashboard'))
     
-    # Inicializar BD antes del primer login si es necesario
-    initialize_database_once()
-    
     if request.method == 'POST':
         try:
             username = request.form.get('username')
@@ -827,6 +997,39 @@ def login():
                 flash('Usuario o contraseña incorrectos', 'error')
                 return render_template('login.html')
             
+            # ✅ NUEVA VALIDACIÓN: Verificar si la matrícula permite login
+            db = Database()
+            
+            if usuario.matricula_id:
+                # Es un estudiante - verificar en tabla matriculas
+                matricula = db.fetch_one("""
+                    SELECT permite_login, estado FROM matriculas 
+                    WHERE id = %s
+                """, (usuario.matricula_id,))
+                
+                if matricula:
+                    if not matricula['permite_login']:
+                        flash('Su matrícula no tiene permisos para iniciar sesión. Contacte al administrador.', 'error')
+                        return render_template('login.html')
+                    if matricula['estado'] != 'Activa':
+                        flash('Su matrícula no está activa. Contacte al administrador.', 'error')
+                        return render_template('login.html')
+            
+            elif usuario.maestro_id:
+                # Es un maestro - verificar en tabla matriculas_maestros
+                matricula_maestro = db.fetch_one("""
+                    SELECT permite_login, estado FROM matriculas_maestros 
+                    WHERE maestro_id = %s
+                """, (usuario.maestro_id,))
+                
+                if matricula_maestro:
+                    if not matricula_maestro['permite_login']:
+                        flash('Su matrícula de maestro no tiene permisos para iniciar sesión. Contacte al administrador.', 'error')
+                        return render_template('login.html')
+                    if matricula_maestro['estado'] != 'Activa':
+                        flash('Su matrícula de maestro no está activa. Contacte al administrador.', 'error')
+                        return render_template('login.html')
+            
             # Actualizar último login
             usuario.actualizar_ultimo_login()
             
@@ -835,7 +1038,8 @@ def login():
                 'id': usuario.id,
                 'username': usuario.username,
                 'rol': usuario.rol,
-                'matricula_id': usuario.matricula_id
+                'matricula_id': usuario.matricula_id,
+                'maestro_id': usuario.maestro_id
             }
             session.permanent = True
             
@@ -854,6 +1058,84 @@ def logout():
     session.clear()
     flash('Has cerrado sesión correctamente', 'info')
     return redirect(url_for('login'))
+
+@app.route('/dashboard_maestro')
+def dashboard_maestro():
+    """Dashboard específico para maestros"""
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    
+    if session['usuario']['rol'] != 'maestro':
+        flash('Acceso denegado', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        usuario = session['usuario']
+        db = Database()
+        
+        # Obtener información del maestro
+        maestro_info = obtener_info_maestro(usuario['maestro_id'])
+        
+        # Obtener grupos asignados al maestro
+        grupos_asignados = db.fetch_all("""
+            SELECT DISTINCT g.*, 
+                   (SELECT COUNT(*) FROM matriculas m WHERE m.grupo_id = g.id AND m.estado = 'Activa') as total_estudiantes
+            FROM grupos g
+            JOIN horarios h ON h.grupo_id = g.id
+            WHERE h.profesor LIKE %s
+            ORDER BY g.grado, g.nombre
+        """, (f"%{maestro_info['maestro']['nombre']}%",)) or []
+        
+        # Obtener materias por grupo
+        for grupo in grupos_asignados:
+            materias = db.fetch_all("""
+                SELECT DISTINCT materia 
+                FROM horarios 
+                WHERE grupo_id = %s AND profesor LIKE %s
+            """, (grupo['id'], f"%{maestro_info['maestro']['nombre']}%")) or []
+            grupo['materias'] = [m['materia'] for m in materias]
+        
+        # Calcular total de estudiantes
+        total_estudiantes = sum(grupo['total_estudiantes'] for grupo in grupos_asignados)
+        
+        # Obtener listas de asistencia recientes del maestro
+        listas_recientes = db.fetch_all("""
+            SELECT la.*, g.nombre as grupo_nombre,
+                   (SELECT COUNT(*) FROM asistencias_alumnos aa WHERE aa.lista_id = la.id AND aa.asistio = 1) as total_asistencia,
+                   (SELECT COUNT(*) FROM matriculas m WHERE m.grupo_id = g.id AND m.estado = 'Activa') as total_alumnos
+            FROM listas_asistencia la
+            JOIN grupos g ON la.grupo_id = g.id
+            WHERE la.profesor LIKE %s
+            ORDER BY la.fecha DESC, la.hora DESC
+            LIMIT 5
+        """, (f"%{maestro_info['maestro']['nombre']}%",)) or []
+        
+        # Contar listas de hoy
+        listas_hoy = db.fetch_one("""
+            SELECT COUNT(*) as total 
+            FROM listas_asistencia 
+            WHERE profesor LIKE %s AND fecha = CURDATE()
+        """, (f"%{maestro_info['maestro']['nombre']}%",))
+        listas_hoy = listas_hoy['total'] if listas_hoy else 0
+        
+        return render_template('dashboard_maestro.html',
+                             maestro_info=maestro_info,
+                             grupos_asignados=grupos_asignados,
+                             total_estudiantes=total_estudiantes,
+                             listas_recientes=listas_recientes,
+                             listas_hoy=listas_hoy,
+                             now=datetime.now())
+        
+    except Exception as e:
+        print(f"❌ Error en dashboard maestro: {e}")
+        flash('Error cargando el dashboard', 'error')
+        return render_template('dashboard_maestro.html',
+                             maestro_info=None,
+                             grupos_asignados=[],
+                             total_estudiantes=0,
+                             listas_recientes=[],
+                             listas_hoy=0,
+                             now=datetime.now())
 
 @app.route('/dashboard')
 def dashboard():
@@ -2089,16 +2371,51 @@ def admin_usuarios():
         return redirect(url_for('dashboard'))
     
     try:
-        # Obtener todas las matrículas
-        matriculas = Matricula.obtener_todas() or []
+        # Obtener todas las matrículas de alumnos
+        db = Database()
+        
+        # Matrículas con usuario
+        matriculas_con_usuario = db.fetch_all("""
+            SELECT m.*, a.nombre as alumno_nombre, a.apellido as alumno_apellido,
+                   g.nombre as grupo_nombre, u.username
+            FROM matriculas m
+            JOIN alumnos a ON m.alumno_id = a.id
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            LEFT JOIN usuarios u ON u.matricula_id = m.id
+            WHERE u.id IS NOT NULL
+            ORDER BY a.apellido, a.nombre
+        """) or []
+        
+        # Matrículas sin usuario
+        matriculas_sin_usuario = db.fetch_all("""
+            SELECT m.*, a.nombre as alumno_nombre, a.apellido as alumno_apellido,
+                   g.nombre as grupo_nombre
+            FROM matriculas m
+            JOIN alumnos a ON m.alumno_id = a.id
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            LEFT JOIN usuarios u ON u.matricula_id = m.id
+            WHERE u.id IS NULL
+            ORDER BY a.apellido, a.nombre
+        """) or []
+        
+        # Matrículas de maestros
+        matriculas_maestros = db.fetch_all("""
+            SELECT mm.*, m.nombre as maestro_nombre, m.apellido as maestro_apellido,
+                   u.username, u.id as usuario_id
+            FROM matriculas_maestros mm
+            JOIN maestros m ON mm.maestro_id = m.id
+            LEFT JOIN usuarios u ON u.maestro_id = m.id
+            ORDER BY m.apellido, m.nombre
+        """) or []
         
         # Obtener todos los usuarios
-        db = Database()
         usuarios = db.fetch_all("""
-            SELECT u.*, m.codigo_matricula, a.nombre, a.apellido 
+            SELECT u.*, m.codigo_matricula, a.nombre, a.apellido, 
+                   ma.nombre as maestro_nombre, ma.apellido as maestro_apellido
             FROM usuarios u 
             LEFT JOIN matriculas m ON u.matricula_id = m.id 
             LEFT JOIN alumnos a ON m.alumno_id = a.id
+            LEFT JOIN maestros ma ON u.maestro_id = ma.id
             ORDER BY u.username
         """) or []
         
@@ -2106,43 +2423,12 @@ def admin_usuarios():
         total_listas = db.fetch_one("SELECT COUNT(*) as total FROM listas_asistencia")
         total_listas_sistema = total_listas['total'] if total_listas else 0
         
-        # Separar matrículas con y sin usuario
-        matriculas_con_usuario = []
-        matriculas_sin_usuario = []
-        
-        for matricula in matriculas:
-            tiene_usuario = any(usuario.get('matricula_id') == matricula['id'] for usuario in usuarios)
-            if tiene_usuario:
-                # Obtener información adicional del alumno para las matrículas con usuario
-                alumno_info = db.fetch_one("""
-                    SELECT a.nombre as alumno_nombre, a.apellido as alumno_apellido, 
-                           g.nombre as grupo_nombre
-                    FROM alumnos a 
-                    LEFT JOIN grupos g ON matricula.grupo_id = g.id
-                    WHERE a.id = %s
-                """, (matricula['alumno_id'],))
-                if alumno_info:
-                    matricula.update(alumno_info)
-                matriculas_con_usuario.append(matricula)
-            else:
-                # Obtener información adicional del alumno para las matrículas sin usuario
-                alumno_info = db.fetch_one("""
-                    SELECT a.nombre as alumno_nombre, a.apellido as alumno_apellido,
-                           g.nombre as grupo_nombre
-                    FROM alumnos a 
-                    LEFT JOIN matriculas m ON m.alumno_id = a.id
-                    LEFT JOIN grupos g ON m.grupo_id = g.id
-                    WHERE m.id = %s
-                """, (matricula['id'],))
-                if alumno_info:
-                    matricula.update(alumno_info)
-                matriculas_sin_usuario.append(matricula)
-        
         total_usuarios = len(usuarios)
         
         return render_template('admin_usuarios.html',
                              matriculas_con_usuario=matriculas_con_usuario,
                              matriculas_sin_usuario=matriculas_sin_usuario,
+                             matriculas_maestros=matriculas_maestros,
                              usuarios=usuarios,
                              total_usuarios=total_usuarios,
                              total_listas_sistema=total_listas_sistema)

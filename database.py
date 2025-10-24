@@ -96,6 +96,46 @@ class Database:
             if self.connection:
                 self.connection.rollback()
             return None
+def agregar_tabla_matriculas_maestros(self):
+    """Agregar tabla para matrículas de maestros"""
+    try:
+        # Verificar si la tabla ya existe
+        check_query = """
+        SELECT COUNT(*) as existe 
+        FROM information_schema.TABLES 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'matriculas_maestros'
+        """
+        resultado = self.fetch_one(check_query)
+        
+        if resultado and resultado['existe'] == 0:
+            # Crear tabla de matrículas para maestros
+            create_query = """
+            CREATE TABLE IF NOT EXISTS matriculas_maestros (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                codigo_matricula VARCHAR(50) UNIQUE,
+                maestro_id INT NOT NULL,
+                fecha_matricula DATE NOT NULL,
+                anio_escolar YEAR NOT NULL,
+                estado ENUM('Activa', 'Inactiva', 'Jubilado') DEFAULT 'Activa',
+                especialidad_principal VARCHAR(100),
+                grado_asignado VARCHAR(20),
+                turno_asignado ENUM('Matutino', 'Vespertino', 'Nocturno'),
+                observaciones TEXT,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (maestro_id) REFERENCES maestros(id) ON DELETE CASCADE,
+                INDEX idx_maestro_estado (maestro_id, estado),
+                INDEX idx_codigo_matricula (codigo_matricula)
+            )
+            """
+            self.execute_query(create_query)
+            print("✅ Tabla matriculas_maestros creada exitosamente")
+        else:
+            print("✅ La tabla matriculas_maestros ya existe")
+            
+    except Exception as e:
+        print(f"❌ Error creando tabla matriculas_maestros: {e}")
 
     def agregar_columna_maestro_id(self):
         """Agregar columna maestro_id a la tabla usuarios de forma segura"""
@@ -282,6 +322,9 @@ class Database:
             
             # Agregar columna maestro_id si es necesario (para compatibilidad)
             self.agregar_columna_maestro_id()
+            
+            # Agregar tabla de matrículas para maestros
+            self.agregar_tabla_matriculas_maestros()
             
             print("✅ Base de datos inicializada correctamente")
             return True

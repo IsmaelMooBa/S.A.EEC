@@ -1,0 +1,473 @@
+{% extends "base_maestro.html" %}
+
+{% block content %}
+<div class="dashboard-maestro">
+    <!-- Header Principal -->
+    <div class="dashboard-header text-center mb-4">
+        <h1 class="display-5 fw-bold text-primary mb-2">¡Bienvenido al Sistema EEC!</h1>
+        <p class="lead text-muted">Panel de control docente</p>
+        <div class="header-stats row justify-content-center mt-3">
+            <div class="col-auto">
+                <span class="badge bg-primary fs-6 p-2">
+                    <i class="bi bi-person-badge me-2"></i>
+                    {% if maestro_info and maestro_info.matricula_actual %}
+                        {{ maestro_info.matricula_actual.codigo_matricula }}
+                    {% else %}
+                        Sin matrícula
+                    {% endif %}
+                </span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-success fs-6 p-2">
+                    <i class="bi bi-book me-2"></i>
+                    {% if maestro_info and maestro_info.especialidad %}
+                        {{ maestro_info.especialidad }}
+                    {% else %}
+                        Sin especialidad
+                    {% endif %}
+                </span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-warning fs-6 p-2">
+                    <i class="bi bi-award me-2"></i>
+                    Profesor
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información Principal del Maestro -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-maestro shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h3 class="card-title text-white mb-2">
+                                <i class="bi bi-person-badge me-2"></i>
+                                {% if maestro_info and maestro_info.maestro %}
+                                    {{ maestro_info.maestro.nombre }} {{ maestro_info.maestro.apellido }}
+                                {% else %}
+                                    Maestro
+                                {% endif %}
+                            </h3>
+                            <p class="card-text text-white-50 mb-0">
+                                {% if maestro_info and maestro_info.especialidad %}
+                                    Especialista en {{ maestro_info.especialidad }}
+                                {% else %}
+                                    Información profesional no disponible
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="badge bg-light text-dark fs-6 p-2">
+                                <i class="bi bi-check-circle me-2"></i>
+                                {% if maestro_info and maestro_info.matricula_actual %}
+                                    {{ maestro_info.matricula_actual.estado }}
+                                {% else %}
+                                    Sin estado
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas Principales de Funcionalidades -->
+    <div class="row g-4 mb-4">
+        <!-- Información Personal -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card module-card border-primary h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="module-icon bg-primary rounded-circle mx-auto mb-3">
+                        <i class="bi bi-person-vcard text-white fs-2"></i>
+                    </div>
+                    <h5 class="card-title text-primary mb-2">Información Profesional</h5>
+                    <div class="text-start">
+                        {% if maestro_info and maestro_info.maestro %}
+                            <p class="mb-2"><strong>Email:</strong> {{ maestro_info.maestro.email }}</p>
+                            <p class="mb-2"><strong>Teléfono:</strong> {{ maestro_info.maestro.telefono or 'No registrado' }}</p>
+                            <p class="mb-2"><strong>Especialidad:</strong> {{ maestro_info.maestro.especialidad or 'No especificada' }}</p>
+                            {% if maestro_info.maestro.fecha_contratacion %}
+                            <p class="mb-0"><strong>Contratación:</strong> {{ maestro_info.maestro.fecha_contratacion.strftime('%d/%m/%Y') }}</p>
+                            {% endif %}
+                        {% else %}
+                            <p class="text-muted">Información no disponible</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gestión de Asistencia -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card module-card border-success h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="module-icon bg-success rounded-circle mx-auto mb-3">
+                        <i class="bi bi-clipboard-check text-white fs-2"></i>
+                    </div>
+                    <h5 class="card-title text-success mb-2">Gestión de Asistencia</h5>
+                    <p class="text-muted mb-3">Toma de asistencia y control de clases</p>
+                    <a href="{{ url_for('pase_lista') }}" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Pase de Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grupos Asignados -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card module-card border-warning h-100 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="module-icon bg-warning rounded-circle mx-auto mb-3">
+                        <i class="bi bi-people text-white fs-2"></i>
+                    </div>
+                    <h5 class="card-title text-warning mb-2">Mis Grupos</h5>
+                    {% if grupos_asignados %}
+                        <p class="mb-2"><strong>Total Grupos:</strong> {{ grupos_asignados|length }}</p>
+                        <p class="mb-0"><strong>Estudiantes:</strong> {{ total_estudiantes }}</p>
+                    {% else %}
+                        <p class="text-muted">No tiene grupos asignados</p>
+                    {% endif %}
+                    <div class="mt-3">
+                        <a href="{{ url_for('grupos') }}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-eye me-1"></i>Ver Grupos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Información Detallada -->
+    <div class="row g-4">
+        <!-- Grupos y Materias -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-journal-text me-2 text-white"></i>Mis Grupos y Materias
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if grupos_asignados %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Grupo</th>
+                                    <th>Grado</th>
+                                    <th>Turno</th>
+                                    <th>Materias</th>
+                                    <th>Estudiantes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for grupo in grupos_asignados %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ grupo.nombre }}</strong>
+                                    </td>
+                                    <td>{{ grupo.grado }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ grupo.turno }}</span>
+                                    </td>
+                                    <td>
+                                        {% if grupo.materias %}
+                                            {% for materia in grupo.materias %}
+                                                <span class="badge bg-secondary mb-1">{{ materia }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin materias</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ grupo.total_estudiantes }} estudiantes</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-people text-muted display-4"></i>
+                        <p class="text-muted mt-3">No tiene grupos asignados</p>
+                        <a href="{{ url_for('grupos') }}" class="btn btn-primary mt-2">
+                            <i class="bi bi-eye me-1"></i>Ver Todos los Grupos
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Información Rápida -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-graph-up me-2 text-white"></i>Resumen Profesional
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <!-- Estado de Contrato -->
+                        <div class="info-item bg-primary bg-opacity-10 p-3 rounded-3 border border-primary">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-primary mb-1">Estado</h6>
+                                    <h4 class="text-primary mb-0">
+                                        {% if maestro_info and maestro_info.maestro.activo %}
+                                            Activo
+                                        {% else %}
+                                            Inactivo
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-person-check text-primary fs-4"></i>
+                            </div>
+                        </div>
+
+                        <!-- Año Escolar -->
+                        <div class="info-item bg-success bg-opacity-10 p-3 rounded-3 border border-success">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-success mb-1">Año Escolar</h6>
+                                    <h4 class="text-success mb-0">
+                                        {% if maestro_info and maestro_info.matricula_actual %}
+                                            {{ maestro_info.matricula_actual.anio_escolar }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-calendar-check text-success fs-4"></i>
+                            </div>
+                        </div>
+
+                        <!-- Total Grupos -->
+                        <div class="info-item bg-info bg-opacity-10 p-3 rounded-3 border border-info">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-info mb-1">Grupos</h6>
+                                    <h4 class="text-info mb-0">
+                                        {{ grupos_asignados|length }}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-people text-info fs-4"></i>
+                            </div>
+                        </div>
+
+                        <!-- Total Estudiantes -->
+                        <div class="info-item bg-warning bg-opacity-10 p-3 rounded-3 border border-warning">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-warning mb-1">Estudiantes</h6>
+                                    <h4 class="text-warning mb-0">
+                                        {{ total_estudiantes }}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-person-plus text-warning fs-4"></i>
+                            </div>
+                        </div>
+
+                        <!-- Listas de Asistencia -->
+                        <div class="info-item bg-purple bg-opacity-10 p-3 rounded-3 border border-purple">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-purple mb-1">Listas Hoy</h6>
+                                    <h4 class="text-purple mb-0">
+                                        {{ listas_hoy }}
+                                    </h4>
+                                </div>
+                                <i class="bi bi-clipboard-data text-purple fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Listas de Asistencia Recientes -->
+    <div class="row g-4 mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-info text-white py-3">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-clock-history me-2 text-white"></i>Listas de Asistencia Recientes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if listas_recientes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Grupo</th>
+                                    <th>Materia</th>
+                                    <th>Asistencia</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lista in listas_recientes %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ lista.fecha.strftime('%d/%m/%Y') }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ lista.hora }}</small>
+                                    </td>
+                                    <td>{{ lista.grupo_nombre }}</td>
+                                    <td>{{ lista.materia }}</td>
+                                    <td>
+                                        <span class="badge bg-success">{{ lista.total_asistencia }}/{{ lista.total_alumnos }}</span>
+                                    </td>
+                                    <td>
+                                        {% if lista.fecha.date() == now.date() %}
+                                            <span class="badge bg-primary">Hoy</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pasada</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('editar_lista_asistencia', lista_id=lista.id) }}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-pencil me-1"></i>Editar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clipboard-x text-muted display-4"></i>
+                        <p class="text-muted mt-3">No hay listas de asistencia recientes</p>
+                        <a href="{{ url_for('pase_lista') }}" class="btn btn-primary mt-2">
+                            <i class="bi bi-plus-circle me-1"></i>Crear Primera Lista
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-maestro {
+    padding: 1rem 0;
+}
+
+.dashboard-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 2rem 1rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.module-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid;
+}
+
+.module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.module-icon {
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-gradient-maestro {
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%) !important;
+    border: none;
+    border-radius: 15px;
+}
+
+.info-item {
+    transition: transform 0.2s ease;
+}
+
+.info-item:hover {
+    transform: translateY(-2px);
+}
+
+.header-stats .badge {
+    border-radius: 20px;
+    transition: transform 0.2s ease;
+}
+
+.header-stats .badge:hover {
+    transform: scale(1.05);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+/* Color morado para listas */
+.bg-purple {
+    background-color: #6f42c1 !important;
+}
+
+.text-purple {
+    color: #6f42c1 !important;
+}
+
+.border-purple {
+    border-color: #6f42c1 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dashboard-header {
+        padding: 1.5rem 1rem;
+    }
+    
+    .display-5 {
+        font-size: 2rem;
+    }
+    
+    .module-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .module-icon .fs-2 {
+        font-size: 1.5rem !important;
+    }
+    
+    .btn-group-responsive {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .btn-group-responsive .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
