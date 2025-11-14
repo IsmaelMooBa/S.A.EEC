@@ -533,6 +533,32 @@ def eliminar_maestro(id):
     
     return redirect(url_for('maestros'))
 
+def obtener_info_maestro(maestro_id):
+    """Obtener información completa del maestro basado en el ID"""
+    try:
+        # Obtener datos del maestro
+        maestro = Maestro.obtener_por_id(maestro_id)
+        if not maestro:
+            return None
+        
+        # Obtener matrícula actual del maestro
+        db = Database()
+        matricula_maestro = db.fetch_one("""
+            SELECT * FROM matriculas_maestros 
+            WHERE maestro_id = %s AND estado = 'Activa'
+            ORDER BY fecha_matricula DESC 
+            LIMIT 1
+        """, (maestro_id,))
+        
+        return {
+            'maestro': maestro,
+            'matricula_actual': matricula_maestro
+        }
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo info maestro: {e}")
+        return None
+
 # ===== RUTAS PARA PASE DE LISTA =====
 
 @app.route('/pase_lista')

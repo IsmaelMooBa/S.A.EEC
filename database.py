@@ -96,46 +96,47 @@ class Database:
             if self.connection:
                 self.connection.rollback()
             return None
-def agregar_tabla_matriculas_maestros(self):
-    """Agregar tabla para matrículas de maestros"""
-    try:
-        # Verificar si la tabla ya existe
-        check_query = """
-        SELECT COUNT(*) as existe 
-        FROM information_schema.TABLES 
-        WHERE TABLE_SCHEMA = DATABASE() 
-        AND TABLE_NAME = 'matriculas_maestros'
-        """
-        resultado = self.fetch_one(check_query)
-        
-        if resultado and resultado['existe'] == 0:
-            # Crear tabla de matrículas para maestros
-            create_query = """
-            CREATE TABLE IF NOT EXISTS matriculas_maestros (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                codigo_matricula VARCHAR(50) UNIQUE,
-                maestro_id INT NOT NULL,
-                fecha_matricula DATE NOT NULL,
-                anio_escolar YEAR NOT NULL,
-                estado ENUM('Activa', 'Inactiva', 'Jubilado') DEFAULT 'Activa',
-                especialidad_principal VARCHAR(100),
-                grado_asignado VARCHAR(20),
-                turno_asignado ENUM('Matutino', 'Vespertino', 'Nocturno'),
-                observaciones TEXT,
-                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (maestro_id) REFERENCES maestros(id) ON DELETE CASCADE,
-                INDEX idx_maestro_estado (maestro_id, estado),
-                INDEX idx_codigo_matricula (codigo_matricula)
-            )
+
+    def agregar_tabla_matriculas_maestros(self):
+        """Agregar tabla para matrículas de maestros"""
+        try:
+            # Verificar si la tabla ya existe
+            check_query = """
+            SELECT COUNT(*) as existe 
+            FROM information_schema.TABLES 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'matriculas_maestros'
             """
-            self.execute_query(create_query)
-            print("✅ Tabla matriculas_maestros creada exitosamente")
-        else:
-            print("✅ La tabla matriculas_maestros ya existe")
+            resultado = self.fetch_one(check_query)
             
-    except Exception as e:
-        print(f"❌ Error creando tabla matriculas_maestros: {e}")
+            if resultado and resultado['existe'] == 0:
+                # Crear tabla de matrículas para maestros
+                create_query = """
+                CREATE TABLE IF NOT EXISTS matriculas_maestros (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    codigo_matricula VARCHAR(50) UNIQUE,
+                    maestro_id INT NOT NULL,
+                    fecha_matricula DATE NOT NULL,
+                    anio_escolar INT NOT NULL,
+                    estado ENUM('Activa', 'Inactiva', 'Jubilado') DEFAULT 'Activa',
+                    especialidad_principal VARCHAR(100),
+                    grado_asignado VARCHAR(20),
+                    turno_asignado ENUM('Matutino', 'Vespertino', 'Nocturno'),
+                    observaciones TEXT,
+                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (maestro_id) REFERENCES maestros(id) ON DELETE CASCADE,
+                    INDEX idx_maestro_estado (maestro_id, estado),
+                    INDEX idx_codigo_matricula (codigo_matricula)
+                )
+                """
+                self.execute_query(create_query)
+                print("✅ Tabla matriculas_maestros creada exitosamente")
+            else:
+                print("✅ La tabla matriculas_maestros ya existe")
+                
+        except Exception as e:
+            print(f"❌ Error creando tabla matriculas_maestros: {e}")
 
     def agregar_columna_maestro_id(self):
         """Agregar columna maestro_id a la tabla usuarios de forma segura"""
@@ -197,8 +198,8 @@ def agregar_tabla_matriculas_maestros(self):
                     id INT PRIMARY KEY AUTO_INCREMENT,
                     nombre VARCHAR(100) NOT NULL,
                     apellido VARCHAR(100) NOT NULL,
-                    fecha_nacimiento DATE NOT NULL,
-                    email VARCHAR(150) UNIQUE NOT NULL,
+                    fecha_nacimiento DATE,
+                    email VARCHAR(150) UNIQUE,
                     telefono VARCHAR(15),
                     direccion TEXT,
                     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -239,8 +240,9 @@ def agregar_tabla_matriculas_maestros(self):
                     alumno_id INT,
                     grupo_id INT,
                     fecha_matricula DATE NOT NULL,
-                    anio_escolar YEAR NOT NULL,
+                    anio_escolar INT NOT NULL,
                     estado ENUM('Activa', 'Inactiva', 'Graduado') DEFAULT 'Activa',
+                    permite_login BOOLEAN DEFAULT TRUE,
                     FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE,
                     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE SET NULL
                 )
@@ -252,7 +254,7 @@ def agregar_tabla_matriculas_maestros(self):
                     id INT PRIMARY KEY AUTO_INCREMENT,
                     nombre VARCHAR(100) NOT NULL,
                     apellido VARCHAR(100) NOT NULL,
-                    email VARCHAR(150) UNIQUE NOT NULL,
+                    email VARCHAR(150) UNIQUE,
                     telefono VARCHAR(20),
                     especialidad VARCHAR(100),
                     fecha_contratacion DATE,
@@ -271,7 +273,7 @@ def agregar_tabla_matriculas_maestros(self):
                     id INT PRIMARY KEY AUTO_INCREMENT,
                     username VARCHAR(50) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
-                    rol ENUM('admin', 'estudiante', 'profesor') DEFAULT 'estudiante',
+                    rol ENUM('admin', 'estudiante', 'maestro') DEFAULT 'estudiante',
                     matricula_id INT,
                     maestro_id INT,
                     activo BOOLEAN DEFAULT TRUE,
@@ -310,6 +312,19 @@ def agregar_tabla_matriculas_maestros(self):
                     FOREIGN KEY (lista_id) REFERENCES listas_asistencia(id) ON DELETE CASCADE,
                     FOREIGN KEY (alumno_id) REFERENCES alumnos(id),
                     UNIQUE KEY unique_asistencia (lista_id, alumno_id)
+                )
+            """)
+            
+            # Tabla de logs de validación (NUEVA)
+            temp_cursor.execute("""
+                CREATE TABLE IF NOT EXISTS logs_validacion (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    lista_id INT NOT NULL,
+                    alumno_id INT NOT NULL,
+                    accion VARCHAR(50) NOT NULL,
+                    fecha_validacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (lista_id) REFERENCES listas_asistencia(id) ON DELETE CASCADE,
+                    FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE
                 )
             """)
             

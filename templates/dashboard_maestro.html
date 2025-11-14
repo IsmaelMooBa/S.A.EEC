@@ -11,7 +11,7 @@
                 <span class="badge bg-primary fs-6 p-2">
                     <i class="bi bi-person-badge me-2"></i>
                     {% if maestro_info and maestro_info.matricula_actual %}
-                        {{ maestro_info.matricula_actual.codigo_matricula }}
+                        {{ maestro_info.matricula_actual.codigo_matricula or 'Sin código' }}
                     {% else %}
                         Sin matrícula
                     {% endif %}
@@ -20,8 +20,8 @@
             <div class="col-auto">
                 <span class="badge bg-success fs-6 p-2">
                     <i class="bi bi-book me-2"></i>
-                    {% if maestro_info and maestro_info.especialidad %}
-                        {{ maestro_info.especialidad }}
+                    {% if maestro_info and maestro_info.maestro and maestro_info.maestro.especialidad %}
+                        {{ maestro_info.maestro.especialidad }}
                     {% else %}
                         Sin especialidad
                     {% endif %}
@@ -52,8 +52,8 @@
                                 {% endif %}
                             </h3>
                             <p class="card-text text-white-50 mb-0">
-                                {% if maestro_info and maestro_info.especialidad %}
-                                    Especialista en {{ maestro_info.especialidad }}
+                                {% if maestro_info and maestro_info.maestro and maestro_info.maestro.especialidad %}
+                                    Especialista en {{ maestro_info.maestro.especialidad }}
                                 {% else %}
                                     Información profesional no disponible
                                 {% endif %}
@@ -62,10 +62,10 @@
                         <div class="col-md-4 text-end">
                             <div class="badge bg-light text-dark fs-6 p-2">
                                 <i class="bi bi-check-circle me-2"></i>
-                                {% if maestro_info and maestro_info.matricula_actual %}
-                                    {{ maestro_info.matricula_actual.estado }}
+                                {% if maestro_info and maestro_info.maestro and maestro_info.maestro.activo %}
+                                    Activo
                                 {% else %}
-                                    Sin estado
+                                    Inactivo
                                 {% endif %}
                             </div>
                         </div>
@@ -87,11 +87,13 @@
                     <h5 class="card-title text-primary mb-2">Información Profesional</h5>
                     <div class="text-start">
                         {% if maestro_info and maestro_info.maestro %}
-                            <p class="mb-2"><strong>Email:</strong> {{ maestro_info.maestro.email }}</p>
+                            <p class="mb-2"><strong>Email:</strong> {{ maestro_info.maestro.email or 'No registrado' }}</p>
                             <p class="mb-2"><strong>Teléfono:</strong> {{ maestro_info.maestro.telefono or 'No registrado' }}</p>
                             <p class="mb-2"><strong>Especialidad:</strong> {{ maestro_info.maestro.especialidad or 'No especificada' }}</p>
                             {% if maestro_info.maestro.fecha_contratacion %}
                             <p class="mb-0"><strong>Contratación:</strong> {{ maestro_info.maestro.fecha_contratacion.strftime('%d/%m/%Y') }}</p>
+                            {% else %}
+                            <p class="mb-0"><strong>Contratación:</strong> No especificada</p>
                             {% endif %}
                         {% else %}
                             <p class="text-muted">Información no disponible</p>
@@ -220,7 +222,7 @@
                                 <div>
                                     <h6 class="text-primary mb-1">Estado</h6>
                                     <h4 class="text-primary mb-0">
-                                        {% if maestro_info and maestro_info.maestro.activo %}
+                                        {% if maestro_info and maestro_info.maestro and maestro_info.maestro.activo %}
                                             Activo
                                         {% else %}
                                             Inactivo
